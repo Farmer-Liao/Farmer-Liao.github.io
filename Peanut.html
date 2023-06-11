@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Peanut</title>
+    <link rel="stylesheet" type="text/css" href="styles.css">
+</head>
+
+<body>
+
+    <div id="content">
+          <h1>Peanut</h1>
+          <p align="right">Last updated: <span id="last-updated"></span></p>
+
+          <h3>Introduction</h3>
+          <p>
+Peanut is an interpreted script language. Syntax of a Peanut script is like
+that of a C program.
+          </p>
+
+          <p>
+Basically a Peanut script is divided into functions. The main() function declared
+in the global namespace is the function that Peanut starts to run.
+Besides the built-in functions that the interpreter provides and user-implemented
+functions, Peanut is extensible by loading extension modules. 
+          </p>
+
+          <p>
+Conceptually, Peanut is devised for the programmer to construct scripts
+with the following "layering relationship".
+A script is based on built-in functions and extension modules.
+A extension module is based on APIs provided by the Peanut interpreter.
+          </p>
+
+          <pre>
+            <code>
+    +-----------------------------------------------------+
+    |                                                     |
+    |                        Script                       |
+    |                                                     |
+    +-----------------------------------------------------+
+    +----------+ +----------+ +----------+     +----------+
+    |          | |          | |          |     |          |
+    | Built-in | | Ext.     | | Ext.     |     | Ext.     |
+    | Functions| | Module 1 | | Module 2 | ... | Module n |
+    |          | |          | |          |     |          |
+    +----------+ +----------+ +----------+     +----------+
+    +-----------------------------------------------------+
+    |                                                     |
+    |                     Interpreter                     |
+    |                                                     |
+    +-----------------------------------------------------+
+            </code>
+          </pre>
+
+
+          <p>
+The major features of Peanut are:
+<ul>
+<li> Multitasking programming </li>
+<li> Declarations with namespace resolutions </li>
+<li> Untyped variable </li>
+<li> Value passing and reference passing </li>
+<li> Sub-array passing </li>
+<li> Object programming </li>
+<li> Extensible </li>
+<li> High-level C-like syntax </li>
+</ul>
+          </p>
+
+          <p>
+In the following, example scripts are illustreated for the features.
+          </p>
+
+          <h3>Hello World!</h3>
+
+          <p>
+In this script, print() is a built-in function provided by the script interpreter.
+main() is the entry of the script.
+          </p>
+
+          <pre>
+            <code>
+main()
+{
+    print("Hello World\n");
+}
+            </code>
+          </pre>
+
+
+          <h3>Extension modules usage</h3>
+          <p>
+Based on 'Extension APIs' provided by Peanut, a Peanut extension module can be developed in C.
+The 'Extension APIs' assist an extension module to define functions, global variables,
+global constants, and structures for use in scripts.
+          </p>
+
+To utilize an extension module, the script has to use a #load statement to
+incoporate the module. For the following sample code as an example, the
+script incoporates the "pxm_clib.pxm" module and calls the function c::printf
+provided by the module with 2 arguments: "Hello World! %d\n" and 123, where c::
+is the namespace in which printf is defined.
+
+          <pre>
+            <code>
+#load &lt;pxm_clib.pxm&gt;
+
+main()
+{
+    c::printf("Hello World! %d\n", 123);
+}
+            </code>
+          </pre>
+
+
+          <h3>Untyped variable</h3>
+An elementary variable declared in a script can be used to store any type of data:
+string, integer number, or floating number. For the following as an example, the
+variable v is used to store "10.0", 10, and 10.0 in 3 statements.
+
+          <pre>
+            <code>
+main()
+{
+    var v;
+
+    v = "10.0";
+    print("v is ", v, "\n")
+
+    v = 10;
+    print("v is ", v, "\n")
+
+    v = 10.0;
+    print("v is ", v, "\n")
+}
+            </code>
+          </pre>
+Output:
+          <pre>
+            <code>
+v is 10.0
+v is 10
+v is 10.000000
+            </code>
+          </pre>
+
+An arrary is a set of elementary variables. Each element of an array is untyped.
+The following is an example saving 3 different types of data into the same array.
+
+          <pre>
+            <code>
+main()
+{
+    var a[3], i;
+
+    a[0] = "10.0";
+    a[1] = 10;
+    a[2] = 10.0;
+
+    for (i = 0; i &lt; 3; ++i)
+        print("a[", i, "] = ", a[i], "\n");
+}
+            </code>
+          </pre>
+Output:
+          <pre>
+            <code>
+a[0] = 10.0
+a[1] = 10
+a[2] = 10.000000
+            </code>
+          </pre>
+
+
+          <h3>Value passing and reference passing</h3>
+            <p>
+In the following script, either the function funcV or the function funcR is declared as
+a function with two parameters a and b. The only difference between the function funcV and 
+the function funcR is that there is an ampersand, that is &amp;, existing before each parameter
+of the function funcR.
+            </p>
+
+            <p>
+A function parameter following an ampersand sign is a call-by-reference
+parameter. Changing value to a call-by-reference parameter causes the argument variable
+changed in the caller side, too. This kind of scheme to pass data to the callee function
+is reference passing. Only a variable can be the argument to a call-by-reference parameter.
+            </p>
+
+            <p>
+A function parameter without an ampersand sign preceeded is a call-by-value
+parameter. Changing value to a call-by-value parameter does not cause the argument variable.
+This kind of scheme passing data to the callee function is value passing.
+            </p>
+
+          <pre>
+            <code>
+#load &lt;pxm_clib.pxm&gt;
+
+funV(a, b)
+{
+    var t;
+
+    // one of {a, b} is a string; the other one is an integer
+
+    if (isstring(a))
+    {
+        t = b;
+        b = a;
+        a = t; 
+    }
+
+    c::printf("in %s: %d %s\n", __FUNCTION__, a, b);
+}
+
+funR(&amp;a, &amp;b)
+{
+    var t;
+
+    // one of {a, b} is a string; the other one is an integer
+
+    if (isstring(a))
+    {
+        t = b;
+        b = a;
+        a = t; 
+    }
+
+    c::printf("in %s: %d %s\n", __FUNCTION__, a, b);
+}
+
+main()
+{
+    var A = "kg";
+    var B = 10;
+
+    print("in ", __FUNCTION__, ": A = ", A, " B = ", B, "\n");
+    funV(A, B);
+    print("in ", __FUNCTION__, ": A = ", A, " B = ", B, "\n");
+    funR(A, B);
+    print("in ", __FUNCTION__, ": A = ", A, " B = ", B, "\n");
+}
+            </code>
+          </pre>
+Output:
+          <pre>
+            <code>
+in main: A = kg B = 10
+in funV: 10 kg
+in main: A = kg B = 10
+in funR: 10 kg
+in main: A = 10 B = kg
+            </code>
+          </pre>
+
+          <h3>Sub-array passing</h3>
+
+            <p>
+It is allowed to pass partial array data to the callee function in a Peanut script.
+Peanut uses an array sub-range expression to specify the portion of a specific array
+dimension being passed.
+            </p>
+
+            <p>
+For the following script as an example, a 2-dimension array is used to represent
+a matrix. In the example script, adding matrix A and B and assigning the result
+to matrix S1 is done by 1 function call to matrix_add(), but adding matrix A and B
+and assigning the result to matrix S2 is done by 4 rounds of function calls to
+matrix_add where each round passes sub-matrix of A, sub-matrix of B, and sub-matrix
+of S1. Passing a sub-matrix of A (or B or S2) is achived by passing the partial
+array to the callee function.
+            </p>
+
+          <pre>
+            <code>
+#load &lt;pxm_clib.pxm&gt;
+
+matrix_add(m, n, &amp;S[][], &amp;X[][], &amp;Y[][])
+{
+    var i, j;
+
+    for (i = 0; i &lt; m; ++i)
+    for (j = 0; j &lt; n; ++j)
+        S[i][j] = X[i][j] + Y[i][j];
+}
+
+main()
+{
+    var i, j, bEqual;
+    var A[5][5], B[5][5], S1[5][5], S2[5][5];    
+
+    for (i = 0; i &lt; 5; ++i)
+    for (j = 0; j &lt; 5; ++j)
+    {
+        A[i][j] = c::rand() % 50;
+        B[i][j] = c::rand() % 50;
+    }
+
+    // S1 = A + B
+    matrix_add(5, 5, S1, A, B);
+
+    // S2 = A + B; using sub-array passing
+    matrix_add(3, 2, S2[0..2][0..1], A[0..2][0..1], B[0..2][0..1]);
+    matrix_add(3, 3, S2[0..2][2..4], A[0..2][2..4], B[0..2][2..4]);
+    matrix_add(2, 2, S2[3..4][0..1], A[3..4][0..1], B[3..4][0..1]);
+    matrix_add(2, 3, S2[3..4][2..4], A[3..4][2..4], B[3..4][2..4]);
+
+    // display S1
+    c::printf("S1 = \n");
+    for (i = 0; i &lt; 5; ++i)
+    {
+        for (j = 0; j &lt; 5; ++j)
+            c::printf(" %2d", S1[i][j]);
+        c::printf("\n");
+    }
+    c::printf("\n");
+
+    // display S2
+    c::printf("S2 = \n");
+    for (i = 0; i &lt; 5; ++i)
+    {
+        for (j = 0; j &lt; 5; ++j)
+            c::printf(" %2d", S2[i][j]);
+        c::printf("\n");
+    }
+    c::printf("\n");
+
+    // compare S1 and S2
+    bEqual = 1;
+    for (i = 0; i &lt; 5; ++i)
+    for (j = 0; j &lt; 5; ++j)
+        if (S1[i][j] != S2[i][j])
+        {
+            bEqual = 0;
+            goto out;
+        }
+
+tag out:
+    c::printf("S1 %s S2\n", bEqual ? "is equal to" : "is not equal to");
+}
+            </code>
+          </pre>
+Output:
+          <pre>
+            <code>
+S1 =
+ 38 16  0 64 10
+ 56 44 60 38 12
+ 64 70 38 48 38
+ 52 34 56 36 16
+ 74  8 46 18 46
+
+S2 =
+ 38 16  0 64 10
+ 56 44 60 38 12
+ 64 70 38 48 38
+ 52 34 56 36 16
+ 74  8 46 18 46
+
+S1 is equal to S2
+            </code>
+          </pre>
+
+
+          <h3>Multitasking programming</h3>
+To start a task in a Peanut script is done by the built-in function task_create.
+Refer to the following sample code, the script starts 2 trivial tasks; each of
+the tasks outputs some message and terminates.
+
+          <pre>
+            <code>
+#load &lt;pxm/pxm_clib.pxm&gt;
+
+task_function1(arg)
+{
+    sleep(100);
+    print(arg, " from ", __FUNCTION__, "\n");
+}
+
+task_function2(arg)
+{
+    c::printf("%d from %s\n", arg, __FUNCTION__);
+}
+
+main()
+{
+    var t1, t2;
+
+    t1 = task_create(task_function1, "Hello World");
+    t2 = task_create(task_function2,  20000000000);
+
+    task_join(t1);
+    task_join(t2);
+}
+            </code>
+          </pre>
+Output:
+          <pre>
+            <code>
+20000000000 from task_function2
+Hello World from task_function1
+            </code>
+          </pre>
+
+          <h3>Object programming</h3>
+            <p>
+To provide a higher level approach to encapsulate datum and functions more tightly,
+Peanut uses structures for defining the tight relation of datum and functions.
+Each data in a stucture could be an elementary variable, an array of elementary
+variables, an object (i.e. a structure variable), or an array of objects (i.e. 
+an array of structure variables). Functions declared in a structure are planned
+to process datum of the object of the structure. Variables declared in a structure
+are called member data. Functions declared in a structure are called the member
+functions.
+            </p>
+
+            <p>
+As the following script shown, the struct Point is declared with two
+elementary variables, X and Y which mean a coordinate in a plane, and one
+function init(). The struct Line is
+declared with a 2-element array of struct Point. In the main() function, L1
+is an object with type struct Line. The member functions are called
+to manipulate the member data by refering the concatenation of object name,
+member data name(s), and the function name with dot between each other.
+
+            </p>
+
+          <pre>
+            <code>
+#load &lt;pxm/pxm_clib.pxm&gt;
+
+struct Point {
+    var X, Y;
+
+    init(x, y)
+    {
+        X = x;
+        Y = y;
+    }
+};
+
+struct Line {
+    struct Point points[2];
+
+    length()
+    {
+        var dx, dy;
+
+        dx = points[0].X - points[1].X;
+        dy = points[0].Y - points[1].Y;
+
+        return (c::sqrt(dx * dx + dy * dy));
+    }
+};
+
+main()
+{
+    struct Line L1;
+
+    L1.points[0].init(0, 0);
+    L1.points[1].init(3, 4);
+
+    c::printf("length of L1 = %2.1f\n", L1.length());
+}
+            </code>
+          </pre>
+Output:
+          <pre>
+            <code>
+length of L1 = 5.0
+            </code>
+          </pre>
+
+
+          <h3>Namespace</h3>
+            <p>
+Namespace is a mechanism for programmers to devise scripts with higher-level
+modualization and avoiding name conflicts. Functions, global variables, constants,
+and structures can be defined within a namespace. The namespace resolution
+should precede the function (or a global variable, or a constant, or a structure) name
+if the function is declared in a namespace. Without precisely specifying namespace
+resolution preceding the name, Peanut
+search the name from the namespace where the name is referred to "outer" namespaces.
+            </p>
+
+            <p>
+Below is a namespace usage example. In the example,
+there are two statements declaring gvar: one
+statement is in the global namespace and the other is in namespace A.
+Similarly, there are 2 main() functions. Besides, a print() function is
+defined in namespace A, where a built-in print() function exists in
+the global namespace. 
+            </p>
+
+          <pre>
+            <code>
+var gvar1 = 3;
+var gvar2 = 7;
+
+namespace A
+{
+    var gvar1 = 0;
+
+    main()
+    {
+        gvar1 = 5;
+        gvar2++;
+    }
+
+    print(void)
+    {
+        ::print(" ::gvar1 = ",  ::gvar1, "\n");
+        ::print("A::gvar1 = ", A::gvar1, "\n");
+        ::print("   gvar1 = ",    gvar1, "\n");
+        ::print("   gvar2 = ",    gvar2, "\n");
+    }
+}
+
+main()
+{
+    A::print();
+
+    A::main();
+    print("After A::main() is called.\n");
+
+    A::print();
+}
+            </code>
+          </pre>
+Output:
+          <pre>
+            <code>
+ ::gvar1 = 3
+A::gvar1 = 0
+   gvar1 = 0
+   gvar2 = 7
+After A::main() is called.
+ ::gvar1 = 3
+A::gvar1 = 5
+   gvar1 = 5
+   gvar2 = 8
+            </code>
+          </pre>
+
+    <script>
+        var lastUpdated = new Date(document.lastModified);
+        var options = { year: 'numeric', month: 'long', day: 'numeric' };
+        var formattedDate = lastUpdated.toLocaleDateString('en-US', options);
+        document.getElementById("last-updated").innerHTML = formattedDate;
+    </script>
+
+    </div>
+
+</body>
+
+</html>
+

@@ -34,3 +34,26 @@ iframe {
     border: none;
 }
 
+.right-align {
+    text-align: right;
+    margin: 5px;
+}
+
+pre code {
+    background-color: #eee;
+    border: 1px solid #000;
+    display: block;
+    padding: 2px;
+}
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+td {
+    border: 1px solid black;
+    padding: 8px;
+    text-align: left;
+}
+
