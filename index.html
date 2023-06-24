@@ -7,16 +7,52 @@
     <meta name="description" content="Peanut Script Language Introduction">
     <meta name="keywords" content="Script, C, Language, Programming, Python, NVMe, SSD, Test, TCG, Opal">
     <link rel="stylesheet" type="text/css" href="styles.css">
-    <script src="script.js"></script>
+    <style>
+        sub-items {
+            display: none;
+            padding-left: 40px; /* Adjust the indent by changing the value */
+        }
+    </style>
+    <script>
+        function toggleSubItems(event) {
+            event.preventDefault();
+            var subItems = event.target.nextElementSibling;
+            var computedStyle = window.getComputedStyle(subItems);
+            var displayStyle = computedStyle.getPropertyValue('display');
+            if (displayStyle === 'none') {
+                subItems.style.display = 'block';
+            } else {
+                subItems.style.display = 'none';
+            }
+        }
+    </script>
 </head>
 
 <body>
     <div class="container">
         <div class="sidebar">
             <ul>
-                <li><a href="Peanut.html" target="content">Peanut</a></li>
-                <li><a href="ntp-io.html" target="content">Peanut ntp-io</a></li>
-                <li><a href="downloads.html" target="content">Downloads</a></li>
+                <li><a href="#" onclick="toggleSubItems(event)">Peanut Script Language</a>
+                    <ul class="sub-items">
+                        <li><a href="Peanut.html" target="content">Introduction</a></li>
+                        <li><a href="bna.html" target="content">Ext. Module BNA</a></li>
+                        <li><a href="downloads.html" target="content">Downloads</a></li>
+                    </ul>
+                </li>
+                <li><a href="#" onclick="toggleSubItems(event)">Peanut ntp-io</a>
+                    <ul class="sub-items">
+                        <li><a href="ntp-io.html" target="content">Introduction</a></li>
+                        <li><a href="ntp-io_downloads.html" target="content">Downloads</a></li>
+                    </ul>
+                </li>
+<!--
+                <li><a href="#" onclick="toggleSubItems(event)">Peanut ntp-opal</a>
+                    <ul class="sub-items">
+                        <li><a href="ntp-opal.html" target="content">Peanut ntp-opal</a></li>
+                        <li><a href="ntp-opalSubPage1.html" target="content">Peanut ntp-opal SubPage 1</a></li>
+                    </ul>
+                </li>
+-->
             </ul>
         </div>
         <div class="content">
@@ -24,5 +60,6 @@
         </div>
     </div>
 </body>
+
 </html>
 

@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Peanut Big Number Arithmetic</title>
+    <link rel="stylesheet" type="text/css" href="styles.css">
+
+  <script src="https://mozilla.github.io/pdf.js/build/pdf.js"></script>
+  <script>
+    function displayPDF() {
+      const url = 'peanut_ext_bna.pdf'; // Replace with the actual path or URL of your PDF file
+
+      // Initialize the PDF viewer
+      const loadingTask = pdfjsLib.getDocument(url);
+      loadingTask.promise.then(function(pdf) {
+        // Fetch the first page
+        pdf.getPage(1).then(function(page) {
+          const scale = 1.5;
+          const viewport = page.getViewport({ scale: scale });
+
+          // Prepare the canvas element
+          const canvas = document.getElementById('pdf-canvas');
+          const context = canvas.getContext('2d');
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+
+          // Render the PDF page on the canvas
+          const renderContext = {
+            canvasContext: context,
+            viewport: viewport
+          };
+          page.render(renderContext);
+        });
+      });
+    }
+  </script>
+</head>
+
+<body>
+
+
+        <div id="content">
+          <h1>Extension Module BNA </h1>
+
+    <!--  <p align="right">Last updated: <span id="last-updated"></span></p>  -->
+          <p align="right">Last updated: 2023/6/24</p> 
+
+          <h3>Introduction</h3>
+          <p>
+'BNA' is short for Big Number Arithmetic.
+          </p>
+          <p>
+The "pxm_bna.pxm" file is a Peanut extension module which provides functions
+to do arithmetics of integer numbers with thousands of digits. Calculations
+include:
+<ul>
+<li> Negation </li>
+<li> Addition </li>
+<li> Subtraction </li>
+<li> Multiplication </li>
+<li> Division </li>
+<li> Exponentiation </li>
+<li> Modulo operation </li>
+<li> Modular multiplication inverse </li>
+<li> Greatest common divisor </li>
+<li> Bit shift operation </li>
+<li> Elliptic Curve point multiplication </li>
+</ul>
+          </p>
+
+          <h3>Namespace bna</h3>
+All functions supported by this extension module is contained in the
+namespace bna (::bna) under the global namespace.
+
+          <h3>bigNum handle</h3>
+          <p>
+In a Peanut script, any big number is represented by a bigNum handle, and functions
+calculating on big numbers take bigNum handle(s) as inputs and output the calculation
+result(s) by a returned value or by call-by-reference parameters.
+          </p>
+
+          <p>
+The bna::new() function is used to create a big number and a bigNum handle is returned by
+the bna::new() function, which takes an integer or a number-formatted string as the input.
+The followings illustrate how  to create big numbers in a Peanut script.
+bigNum handles are assigned to variables n1, n2, n3, and n4.
+          </p>
+
+           <pre>
+             <code>
+    var n1, n2, n3, n4;
+    var str;
+
+    n1 = bna::new(123456);
+    n2 = bna::new("0x123456789ABCDEF123456789ABCDEF");
+    n3 = bna::new("-100,000,000,000,000,000,000,000,000");
+    str = 
+"99,250,068,772,098,856,700,831,462,057,469,632,637,295,940,819,886,\
+667,060,014,643,302,459,100,429,783,653,966,913,783,002,290,784,283,\
+455,628,283,355,470,529,932,956,051,484,477,129,333,881,159,930,212,\
+758,687,602,795,088,579,230,431,661,696,010,232,187,390,436,601,614,\
+145,603,241,902,386,663,442,520,160,735,566,561";
+    n4 = bna::new(str);
+             </code>
+           </pre>
+
+          <p>
+It should be noted that the bna::del() function should be called to free the resource
+used by a bigNum handle if that big number would not be used any more. Multiple
+bigNum handles call be specified in a call to the bna::del() function.
+          </p>
+
+           <pre>
+             <code>
+    var n1, n2, n3;
+
+    n1 = bna::new(123);
+    n2 = bna::new(456);
+    n3 = bna::exp(n1, n2);
+    print("123 ^ 456 = \n");
+    bna::dump10(n3);
+    bna::del(n1, n2, n3);
+             </code>
+           </pre>
+
+
+        <h3>Document</h3>
+        <a href="peanut_ext_bna.pdf">BNA Extension Module Document</a>
+
+    <script>
+        var lastUpdated = new Date(document.lastModified);
+        var options = { year: 'numeric', month: 'long', day: 'numeric' };
+        var formattedDate = lastUpdated.toLocaleDateString('en-US', options);
+        document.getElementById("last-updated").innerHTML = formattedDate;
+    </script>
+
+        </div>
+
+
+</body>
+
+</html>
+
