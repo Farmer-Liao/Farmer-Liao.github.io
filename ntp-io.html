@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Peanut NVMe Test Package - IO</title>
+    <meta name="author" content="Farmer Liao">
+    <meta name="description" content="Peanut Script Language Introduction">
+    <meta name="keywords" content="Script, C, Language, Programming, Python, NVMe, SSD, Test, TCG, Opal">
+    <link rel="stylesheet" type="text/css" href="styles.css">
+</head>
+<body>
+
+        <div id="content">
+          <h1>Peanut ntp-io</h1>
+
+    <!--  <p align="right">Last updated: <span id="last-updated"></span></p>  -->
+          <p align="right">Last updated: 2023/6/24</p> 
+
+          <h3>Introduction</h3>
+          <p>
+'ntp' is short for Nvme Test Package, and 'Peanut ntp-io' is a testing-purpose
+package focusing on I/O tests.
+          </p>
+
+          <p>
+ntp-io is composed of several Peanut extension modules and scripts.
+The major extension module is pxm_nvme.pxm which is devised to maximize
+data inputs and outputs between the host and the disc based
+on PCIe/NVMe architecture. pxm_nvme.pxm extension module provides functions to:
+<ul type="disc">
+  <li> Retrieve device information; includes </li>
+    <ul type="circle">
+      <li> Number of devices (controllers) </li>
+      <li> Number of functions of a device (controller) </li>
+      <li> Number of namespaces of a function </li>
+      <li> Number of IO submission queues </li>
+      <li> Size of an IO submission queue </li>
+      <li> IO submission queue full/empty status </li>
+    </ul>
+
+  <li> Allocate/free DMA data buffers dynamically </li>
+  <li> Read/write DMA data buffers </li>
+  <li> Dump DMA data buffers </li>
+  <li> IOMMU support </li>
+
+  <li> Launch commands to devices </li>
+    <ul type="circle">
+      <li> Admin commands </li>
+      <li> IO commands </li>
+      <li> Vendor commands </li>
+    </ul>
+
+  <li> Query status of each issued command </li>
+    <ul type="circle">
+      <li> Completion status </li>
+      <li> Command specific status </li>
+      <li> Timeout status </li>
+      <li> Execution time </li>
+    </ul>
+
+  <li> Powercycle and recovery </li>
+  <li> Launch resets to the device and recovery </li>
+    <ul type="circle">
+      <li> Controller reset </li>
+      <li> Function level reset </li>
+      <li> NVM subsystem reset </li>
+    </ul>
+
+  <li> Dump trace of the latest commands and events </li>
+  <li> Command number and excution time statistics </li>
+</ul>
+Based on the functionalities provided by the extension modules, programmers
+are able to costomize versatile data I/O behaviors for testing NVMe drives.
+          </p>
+
+          <h3>System requirement</h3>
+<ul type="disc">
+  <li> Ubuntu 20.04 </li>
+  <li> 2MB-size Huge pages </li>
+</ul>
+
+          <h3>Download and set up</h3>
+          <p>
+          </p>
+          <p>
+After the download, execute the following commands to execute the first script.
+          </p>
+
+          <pre>
+            <code>
+~ $ tar -xvzf ntp-io.tar.gz
+~ $ cd ntp-io
+~/ntp-io $ ./pni hello.pnt World
+            </code>
+          </pre>
+
+
+          <h3>Package content</h3>
+<table>
+  <tr>
+    <td>common/</td>
+    <td>The directory for commonly used script routines.</td>
+  </tr>
+  <tr>
+    <td>common_nvme/</td>
+    <td>The directory for frequently used script routines accessing nvme drives.</td>
+  </tr>
+  <tr>
+    <td>doc/</td>
+    <td>The directory for the documentations.</td>
+  </tr>
+  <tr>
+    <td>pxm/</td>
+    <td>The directory where the used extension modules are.</td>
+  </tr>
+  <tr>
+    <td>scripts/</td>
+    <td>The directory where the testing scripts are.</td>
+  </tr>
+  <tr>
+    <td>difm.ko</td>
+    <td>An used linux driver.</td>
+  </tr>
+  <tr>
+    <td>pni</td>
+    <td>The Peanut interpreter.</td>
+  </tr>
+  <tr>
+    <td>sdut</td>
+    <td>The utility used to set up DUTs and dump DUTs information.</td>
+  </tr>
+</table>
+
+
+          <h3>Run IO test scripts</h3>
+            <p>
+Before running the testing scripts, the DUTs should be set up.
+            </p>
+
+            <p>
+Say there are 3 nvme controllers on the system and the device
+nodes are /dev/nvme0, /dev/nvme1, and /dev/nvme2. If /dev/nvme0 and /dev/nvme2
+will be tested, run the followings to set up the DUTs.
+            </p>
+
+          <pre>
+            <code>
+~ $ cd ntp-io
+~/ntp-io $ sudo ./sdut nvme0 nvme2
+            </code>
+          </pre>
+
+            <p>
+After the DUT(s) is set and it is going to run the "1001_seqRdSpeed_1t1q.pnt" script in
+the ntp-io/scripts directory, execute the following command.
+            </p>
+
+          <pre>
+            <code>
+~/ntp-io $ cd scripts
+~/ntp-io/scripts $ sudo ../pni 1001_seqRdSpeed_1t1q.pnt
+            </code>
+          </pre>
+
+And note that the real number of DUTs be tested by a script depends on the
+script behaviors but not the number of DUTs set by the sdut utility.
+
+    <script>
+        var lastUpdated = new Date(document.lastModified);
+        var options = { year: 'numeric', month: 'long', day: 'numeric' };
+        var formattedDate = lastUpdated.toLocaleDateString('en-US', options);
+        document.getElementById("last-updated").innerHTML = formattedDate;
+    </script>
+
+        </div>
+
+
+</body>
+</html>
+
