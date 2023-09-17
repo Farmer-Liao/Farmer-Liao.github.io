@@ -1,0 +1,575 @@
+#load <../pxm/pxm_clib.pxm>
+#load <../pxm/pxm_nvme.pxm>
+
+#include <../common/tablePrinter.pnt>
+#include <../common/stringUtil.pnt>
+
+#include <../common_nvme/ndisk.pnt>
+#include <../common_nvme/nerror.pnt>
+#include <../common_nvme/dumpds.pnt>
+#include <../common_nvme/dumpreg.pnt>
+#include <../common_nvme/vf.pnt>
+
+const MAX_DEVS = 8;
+const MAX_TEST_VF_NUM = 128;
+const MAX_NS_NUM = 64;
+const MAX_Q_DEPTH = 64;
+
+precondition(funch)
+{
+    var EC, num;
+    var nsIds[MAX_NS_NUM];
+    var sqHandle;
+    var nsHandle;
+    var buf;
+    struct funcInfo_t vf;
+    var cmdHandles[MAX_Q_DEPTH], slot, qd;
+    var cmdStatus;
+    var nLBASize, nTotalLBANum;
+    var lba, len;
+
+    num = nvme::getIOSQNum(EC, funch);
+    if (num <= 0) {
+        c::printf("No IOSQ exists on funcHandle:%p\n", funch);
+        return;
+    }
+
+    num = nvme::getNsIds(EC, funch, MAX_NS_NUM, nsIds);
+    if (num <= 0) {
+        c::printf("No namespace exists on funcHandle:%p\n", funch);
+        return;
+    }
+
+
+    sqHandle = nvme::getSQHandle(EC, funch, 1);
+    nsHandle = nvme::getNsHandle(EC, funch, nsIds[0]);
+    nvme::setSQAttr(EC, sqHandle, "DefaultNamespaceHandle", nsHandle);
+
+    vf.Invalidate();
+    vf.RetrieveInfo(0, funch);
+
+    if (!vf.GetNamespaceCapacityyy(nsIds[0], nLBASize, nTotalLBANum))
+    {
+        c::printf("nsid:%d not found\n");
+        return;
+    }
+
+    buf = nvme::ddbAlloc(EC, funch, 32768);
+    nvme::ddbFillPatRand(EC, buf);
+    for (slot = 0; slot < MAX_Q_DEPTH; ++slot)
+        cmdHandles[slot] = 0;
+
+    qd = nvme::getSQSize(EC, sqHandle);
+    if (qd > MAX_Q_DEPTH)
+        qd = MAX_Q_DEPTH;
+
+    len = 32768 / nLBASize;
+    lba = 0;
+
+    slot = 0;
+    while (lba < nTotalLBANum)
+    {
+        if (nTotalLBANum - lba < len)
+            len = nTotalLBANum - lba;
+
+        while (1) {
+            if (cmdHandles[slot]) {
+                if (nvme::pspp(cmdHandles[slot]) & nvme::cmdCplFlag) {
+                    cmdHandles[slot] = 0;
+                    break;
+                }
+                else {
+                    slot = ++slot % qd;
+                }
+            }
+            else
+                break;
+        }
+
+        cmdHandles[slot] = nvme::ioc::write(EC, sqHandle, buf, lba, len);
+        slot = ++slot % qd;
+        lba += len;
+    }
+
+    // wait command completions
+    for (slot = 0; slot < qd; ++slot) {
+        while ((nvme::pspp(cmdHandles[slot]) & nvme::cmdCplFlag) == 0)
+            sleep(1);
+    }
+
+    nvme::ddbFree(EC, buf);
+}
+
+var randReadStopFlag_g = 0;
+
+randReadTask(funch)
+{
+    var EC, num;
+    var nsIds[MAX_NS_NUM];
+    var sqHandle;
+    var nsHandle;
+    var buf;
+    struct funcInfo_t tf;   /* target function; either virtual or physical */
+    var cmdHandles[MAX_Q_DEPTH], slot, qd;
+    var cmdStatus;
+    var nLBASize, nTotalLBANum;
+    var lba, len;
+
+    num = nvme::getIOSQNum(EC, funch);
+    if (num <= 0) {
+        c::printf("No IOSQ exists on funcHandle:%p\n", funch);
+        return;
+    }
+
+    num = nvme::getNsIds(EC, funch, MAX_NS_NUM, nsIds);
+    if (num <= 0) {
+        c::printf("No namespace exists on funcHandle:%p\n", funch);
+        return;
+    }
+
+    sqHandle = nvme::getSQHandle(EC, funch, 1);
+    nsHandle = nvme::getNsHandle(EC, funch, nsIds[0]);
+    nvme::setSQAttr(EC, sqHandle, "DefaultNamespaceHandle", nsHandle);
+
+    tf.Invalidate();
+    tf.RetrieveInfo(0, funch);
+
+    if (!tf.GetNamespaceCapacityyy(nsIds[0], nLBASize, nTotalLBANum))
+    {
+        c::printf("nsid:%d not found\n");
+        return;
+    }
+
+    buf = nvme::ddbAlloc(EC, funch, 4096);
+    for (slot = 0; slot < MAX_Q_DEPTH; ++slot)
+        cmdHandles[slot] = 0;
+
+    qd = nvme::getSQSize(EC, sqHandle);
+    if (qd > MAX_Q_DEPTH)
+        qd = MAX_Q_DEPTH;
+
+    len = 4096 / nLBASize;
+
+    slot = 0;
+    while (!randReadStopFlag_g)
+    {
+        lba = c::rand() % (nTotalLBANum - len);
+
+        while (1) {
+            if (cmdHandles[slot]) {
+                if (nvme::pspp(cmdHandles[slot]) & nvme::cmdCplFlag) {
+                    cmdHandles[slot] = 0;
+                    break;
+                }
+                else {
+                    slot = ++slot % qd;
+                }
+            }
+            else
+                break;
+        }
+
+        cmdHandles[slot] = nvme::ioc::read(EC, sqHandle, buf, lba, len);
+        slot = ++slot % qd;
+    }
+
+    // wait command completions
+    for (slot = 0; slot < qd; ++slot) {
+        while ((nvme::pspp(cmdHandles[slot]) & nvme::cmdCplFlag) == 0)
+            sleep(1);
+    }
+
+    nvme::ddbFree(EC, buf);
+}
+
+
+struct testSet_t
+{
+    var logfd;
+    struct funcInfo_t PF;
+
+    var taskHandle;
+};
+
+struct testSet_t tests_g[MAX_DEVS];
+
+virtualizationManagement(PFHandle, ACT, RT, cntid, NR)
+{
+    var EC;
+    var cmdHandle, cmdStatus, Status, CSStatus;
+    var SCTDescp, SCDescp;
+
+    cmdHandle = nvme::admc::virtMgmt(EC, PFHandle, ACT, RT, cntid, NR);
+    do
+        cmdStatus = nvme::pspp(cmdHandle);
+    while ((cmdStatus & nvme::cmdCplFlag) == 0);
+
+    Status = (cmdStatus & nvme::cmdStsMask) >> nvme::cmdStsLowBit;
+    CSStatus = (cmdStatus & nvme::cmdSpcStsMask) >> nvme::cmdSpcStsLowBit;
+
+    if (Status != 0) {
+        c::printf("virt. management command Status   = %04Xh\n", Status);
+        c::printf("virt. management command CSStatus = %08Xh\n", CSStatus);
+        GetNVMeCmdCplStatusDescription(Status, SCTDescp, SCDescp);
+        c::printf("\tSCTDescp:%s, SCDescp:%s\n", SCTDescp, SCDescp);
+    }
+}
+
+assignVQFlexResource(PFHandle, vf_cntid, NR)
+{
+    virtualizationManagement(PFHandle, 8, 0 /*VQ*/, vf_cntid, NR);
+}
+
+assignVIFlexResource(PFHandle, vf_cntid, NR)
+{
+    virtualizationManagement(PFHandle, 8, 1 /*VI*/, vf_cntid, NR);
+}
+
+setSecondaryControllerOnline(PFHandle, vf_cntid)
+{
+    virtualizationManagement(PFHandle, 9, 0 /*0*/ /*7:Reserved*/, vf_cntid, 0);
+}
+
+testVFTask(idx)
+{
+    var DevNo;
+    var PFHandle = tests_g[idx].PF.m_FuncHandle;
+    var logfd = tests_g[idx].logfd;
+    var EC;
+    var maxVFNum;
+    struct VFInfo_t vfInfo;
+    var nVFNum, nTestVFNum;
+    struct NSCreationParam_t params;
+    var nNSSize_byte;
+    var nLBADataSize;
+    var nMetaDataSize;
+    var n, nsid;
+    var VFHandle, SecCtrlrId;
+    var nIOSQNum;
+    struct funcInfo_t tf;   // target function; either virtual or physical
+    var fhs[MAX_TEST_VF_NUM + 1];
+    var tids[MAX_TEST_VF_NUM + 1];
+    var rowVals[1 + MAX_TEST_VF_NUM + 1];
+    var nLastReadCmdNum[1 + MAX_TEST_VF_NUM + 1];
+    var nThisTotalNum;
+    struct tableColSetting_t perfTblCols[1 + MAX_TEST_VF_NUM + 1];
+    struct tablePrinter_t perfTbl;
+    var temp, ticks;
+    var TFHandle;     // target function's handle
+    var timeStr;
+
+    timeStr = c::util::getCurLocalTimeStr(0);
+    DevNo = nvme::getDevNo(EC, PFHandle);
+
+    c::util::logPrintf(logfd, "%s %s(%d) start\n", timeStr, __FUNCTION__, idx);
+    c::util::logPrintf(logfd, "Model : %s\n", tests_g[idx].PF.m_ModelNumber);
+    c::util::logPrintf(logfd, "Serial: %s\n", tests_g[idx].PF.m_SerialNumber);
+
+    if (!nvme::supportVF(EC, PFHandle))
+    {
+        c::util::logPrintf(logfd, "Error: not support SR-IOV virtual functions\n");
+        goto terminate; 
+    }
+
+    maxVFNum = nvme::getMaxVFNum(EC, PFHandle);
+    if (maxVFNum <= 0) {
+        c::util::logPrintf(logfd, "Error: max. number of VFs = %d\n", maxVFNum);
+        goto terminate;
+    }
+
+    if (maxVFNum > MAX_TEST_VF_NUM)
+        maxVFNum = MAX_TEST_VF_NUM;
+
+    vfInfo.InvalidateAll();
+    vfInfo.RetrieveInfo(logfd, PFHandle, tests_g[idx].PF.m_CNTLID);
+    c::util::logPrintf(logfd, "\nVirtual Function Info (before resource assignment and online setting):\n");
+    vfInfo.Dump(logfd);
+    c::util::logPrintf(logfd, "\n");
+
+    tests_g[idx].PF.m_NamespaceFFFFFFFF.Dump(logfd);
+    c::util::logPrintf(logfd, "\n");
+
+    c::util::logPrintf(logfd, "Info: number of functions on Device %d = %d\n",
+                DevNo, nvme::getFuncNum(EC, DevNo));
+    
+    // enable all virtual functions
+    c::util::logPrintf(logfd, "Info: enable %d virtual functions ...\n", maxVFNum);
+    nVFNum = nvme::enableVF(EC, PFHandle, maxVFNum);
+    c::util::logPrintf(logfd, "Info: %d virtual functions are enabled\n", nVFNum);
+
+    c::util::logPrintf(logfd, "Info: number of functions on Device %d = %d\n",
+                DevNo, nvme::getFuncNum(EC, DevNo));
+
+    nTestVFNum = 32;
+    c::util::logPrintf(logfd, "Info: test IOs on the physical function and %d virtual functions\n", nTestVFNum);
+
+    nNSSize_byte = 8 * 1024 * 1024 * 1024;
+
+    params.Set(tests_g[idx].PF.m_NamespaceFFFFFFFF.m_nLBAFmts, 0, nNSSize_byte, nNSSize_byte);
+
+    // test on the PF and N VFs 
+    for (n = 0; n <= nTestVFNum; ++n) {
+        nsid = createNamespace(logfd, PFHandle, params);
+        if (nsid <= 0) {
+            c::util::logPrintf(logfd, "Error: fail to create a %d-GB namespace\n", nNSSize_byte/(1 << 30));
+
+            nTestVFNum = n - 1;
+            break;
+        }
+
+        c::util::logPrintf(logfd, "Info: success to create a %d-GB namespace with nsid = %d returned\n", nNSSize_byte/(1 << 30), nsid);
+
+        if (n == 0) {
+            c::util::logPrintf(logfd, "Info: physical function handle = %p\n", PFHandle);
+            c::util::logPrintf(logfd, "Info: primary controller identifier = %04xh\n", tests_g[idx].PF.m_CNTLID);
+            attachNamespace(logfd, PFHandle, tests_g[idx].PF.m_CNTLID, nsid);
+            TFHandle = PFHandle;
+        }
+        else {
+            VFHandle = nvme::getFuncHandle(EC, DevNo, n);
+            c::util::logPrintf(logfd, "Info: virtual function handle = %p\n", VFHandle);
+
+            SecCtrlrId = vfInfo.LookUpSecondaryControllerId(n);
+            c::util::logPrintf(logfd, "Info: secondary controller identifier = %04xh\n", SecCtrlrId);
+
+            attachNamespace(logfd, PFHandle, SecCtrlrId, nsid);
+
+            assignVQFlexResource(PFHandle, SecCtrlrId, 2);
+            assignVIFlexResource(PFHandle, SecCtrlrId, 2);
+            nvme::flReset(EC, VFHandle);
+            sleep(500);
+            setSecondaryControllerOnline(PFHandle, SecCtrlrId);
+
+            c::util::logPrintf(logfd, "\n");
+            nvme::dumpTrace(EC, PFHandle, logfd, 5);
+            c::util::logPrintf(logfd, "\n");
+
+            nIOSQNum = 1;
+            nvme::init(EC, VFHandle, nIOSQNum);
+            //c::util::logPrintf(logfd, "nIOSQNum is %d\n", nIOSQNum);
+
+            c::util::logPrintf(logfd, "\n");
+            nvme::dumpTrace(EC, VFHandle, logfd, 0);
+            c::util::logPrintf(logfd, "\n");
+
+            TFHandle = VFHandle;
+        }
+
+        c::util::logPrintf(logfd, "\n");
+
+        tf.Invalidate();
+        tf.RetrieveInfo(logfd, TFHandle);
+        tf.Dump(logfd);
+        c::util::logPrintf(logfd, "\n");
+
+        fhs[n] = TFHandle;
+    }
+
+    vfInfo.InvalidateAll();
+    vfInfo.RetrieveInfo(logfd, PFHandle, tests_g[idx].PF.m_CNTLID);
+    c::util::logPrintf(logfd, "\nVirtual Function Info (after resource assignment and online setting):\n");
+    vfInfo.Dump(logfd);
+    c::util::logPrintf(logfd, "\n");
+
+    timeStr = c::util::getCurLocalTimeStr(0);
+    c::util::logPrintf(logfd, "%s\nDo preconditions on each function's 1st namespace ...\n", timeStr);
+
+    for (n = 0; n <= nTestVFNum; ++n)
+        tids[n] = task_create(precondition, fhs[n]);
+
+    for (n = 0; n <= nTestVFNum; ++n) {
+        task_join(tids[n]);
+        tids[n] = 0;
+    }
+
+    timeStr = c::util::getCurLocalTimeStr(0);
+    c::util::logPrintf(logfd, "%s\nFinish preconditions and take a 10-sec break ...\n", timeStr);
+    sleep(10000);
+
+    c::util::logPrintf(logfd, "\nTest on random-read performance ...\n\n");
+
+    for (n = 0; n <= nTestVFNum; ++n)
+        tids[n] = task_create(randReadTask, fhs[n]);
+
+    // columns: tick + PF + VFs + total
+
+    perfTblCols[0].name = "Tick";
+    perfTblCols[0].size = 6;
+    perfTblCols[0].formatStr = "%6d";
+    for (n = 0; n <= nTestVFNum; ++n) {
+        if (n == 0)
+            c::sprintf(temp, "PF", n);
+        else
+            c::sprintf(temp, "VF-%d", n);
+        perfTblCols[n+1].name = temp;
+        perfTblCols[n+1].size = 11;
+        perfTblCols[n+1].formatStr = "%11d";
+    }
+    perfTblCols[nTestVFNum+2].name = "Total";
+    perfTblCols[nTestVFNum+2].size = 12;
+    perfTblCols[nTestVFNum+2].formatStr = "%12d";
+    perfTbl.setColumns(perfTblCols, nTestVFNum + 3, logfd);
+    perfTbl.printColTitles();
+    
+    for (n = 0; n <= nTestVFNum; ++n)
+        nLastReadCmdNum[n] = nvme::getCmdComplNum(EC, fhs[n]);
+
+    for (ticks = 1; ticks <= 60 * 2; ++ticks) {
+        sleep(1000);
+        rowVals[0] = ticks;
+        nThisTotalNum = 0;
+
+        for (n = 0; n <= nTestVFNum; ++n) {
+            temp = nvme::getCmdComplNum(EC, fhs[n]);
+
+            rowVals[n+1] = temp - nLastReadCmdNum[n];
+            nThisTotalNum += rowVals[n+1];
+
+            nLastReadCmdNum[n] = temp;
+        }
+
+        rowVals[nTestVFNum + 2] = nThisTotalNum;
+        perfTbl.print1Row(rowVals);
+    }
+
+    randReadStopFlag_g = 1;
+    for (n = 0; n <= nTestVFNum; ++n) {
+        task_join(tids[n]);
+    }
+
+    c::util::logPrintf(logfd, "\nInfo: disable all virtual functions ...\n");
+    nVFNum = nvme::enableVF(EC, PFHandle, 0);
+
+tag terminate:
+    timeStr = c::util::getCurLocalTimeStr(0);
+    c::util::logPrintf(logfd, "%s %s(%d) finish\n", timeStr, __FUNCTION__, idx);
+}
+
+main()
+{
+    var timeStr;
+    var caseLogDirName, logFileName, logfd;
+    var devLogFileName, tmpName;
+    var EC;
+    var nVFNumNow;
+    var funcHandle;
+    var nDevs, n, nDevs_supportVF;
+    struct funcInfo_t pf_temp;
+
+    timeStr = c::util::getCurLocalTimeStr(1);
+
+    caseLogDirName = "test.log/" + __FILE__ + ".log/" + timeStr;
+    c::sprintf(logFileName, "%s/summary.log", caseLogDirName);
+    c::util::createDir(caseLogDirName);
+    logfd = c::fopen(logFileName, "w");
+
+    timeStr = c::util::getCurLocalTimeStr(0);
+    c::util::logPrintf(logfd, "%s\n\n", timeStr);
+
+    if (!nvme::scan(EC))
+    {
+        c::util::logPrintf(logfd, "Error: Fail to scan devices with error %d\n", EC);
+        goto Return;
+    }
+
+    nDevs = nvme::getDevNum();
+    if (nDevs <= 0)
+    {
+        c::util::logPrintf(logfd, "Error: No device is detected!");
+        goto Return;
+    }
+    c::util::logPrintf(logfd, "Detect %d devices.\n\n", nDevs);
+
+    if (nDevs > MAX_DEVS)
+    {
+        c::util::logPrintf(logfd, "Warning: this script only support up to %d devices.\n\n", MAX_DEVS);
+        nDevs = MAX_DEVS;
+    }
+
+    //
+    // purge each device supporting VFs
+    //
+    nDevs_supportVF = 0;
+    for (n = 0; n < nDevs; ++n)
+    {
+        if (n > 0)
+            c::util::logPrintf(logfd, "\n");
+
+        c::util::logPrintf(logfd, "On device %d.\n", n);
+
+        funcHandle = nvme::getFuncHandle(EC, n, 0);
+        nvme::init(EC, funcHandle);
+
+        pf_temp.Invalidate();
+        pf_temp.RetrieveInfo(logfd, funcHandle);
+        pf_temp.Dump(logfd);
+        c::util::logPrintf(logfd, "\n");
+
+        if (!nvme::supportVF(EC, funcHandle))
+        {
+            c::util::logPrintf(logfd, "Info: device %d does not support SR-IOV virtual functions.\n", n);
+            continue;
+        }
+
+        nVFNumNow = nvme::enableVF(EC, funcHandle, 0 /* number of VFs to be enabled; 0 = disable all */);
+        if (nVFNumNow != 0 || EC != 0)
+        {
+            c::util::logPrintf(logfd, "Error: fail to disable virtual functions; error code = %d\n", EC);
+            continue;
+        }
+        c::util::logPrintf(logfd, "Info: disable all virtual functions\n");
+
+        //pf_temp.Invalidate();
+        //pf_temp.RetrieveInfo(logfd, funcHandle);
+
+        timeStr = c::util::getCurLocalTimeStr(0);
+        c::util::logPrintf(logfd, "\n%s\n", timeStr);
+
+        deleteAllNamespacesOnAMultiFuncCtrlr(logfd, pf_temp);
+        setAllVFsOffline(logfd, pf_temp);
+        freeAllVFsFlexRescs(logfd, pf_temp);
+
+        //
+        // create a log file and a task to test on VFs of the device
+        //
+
+        tmpName = pf_temp.m_ModelNumber;
+        pruneTailBlanksOfAStringInPlace(tmpName);
+        pruneHeadBlanksOfAStringInPlace(tmpName);
+        replaceUnpritablesBlanksWithCharInPlace(tmpName, '_');
+        devLogFileName = caseLogDirName + "/" + tmpName;
+
+        devLogFileName += "-";
+
+        tmpName = pf_temp.m_SerialNumber;
+        pruneTailBlanksOfAStringInPlace(tmpName);
+        pruneHeadBlanksOfAStringInPlace(tmpName);
+        replaceUnpritablesBlanksWithCharInPlace(tmpName, '_');
+        devLogFileName += tmpName;
+
+        tests_g[nDevs_supportVF].logfd = c::fopen(devLogFileName, "w");
+        tests_g[nDevs_supportVF].PF.Invalidate();
+        tests_g[nDevs_supportVF].PF.RetrieveInfo(logfd, funcHandle);
+        tests_g[nDevs_supportVF].taskHandle = task_create(testVFTask, nDevs_supportVF);
+        nDevs_supportVF++;
+    }
+
+
+    //
+    // wait tasks finish
+    //
+    for (n = 0; n < nDevs_supportVF; ++n)
+    {
+        task_join(tests_g[n].taskHandle);
+
+        c::fclose(tests_g[n].logfd);
+    }
+
+    nvme::put();
+tag Return:
+    c::util::logPrintf(logfd, "\n   !!! Test Finish !!!\n");
+    timeStr = c::util::getCurLocalTimeStr(0);
+    c::util::logPrintf(logfd, "\n%s\n", timeStr);
+    c::fclose(logfd);
+}
+
