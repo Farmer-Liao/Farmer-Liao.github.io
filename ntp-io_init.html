@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Peanut NVMe Test Package - IO</title>
+    <meta name="author" content="Farmer Liao">
+    <meta name="description" content="Peanut Script Language Introduction">
+    <meta name="keywords" content="Peanut, Script, Language, Programming, C, Python, NVMe, SSD, Test, TCG, Opal">
+    <link rel="stylesheet" type="text/css" href="styles.css">
+</head>
+<body>
+
+  <div id="content">
+    <h1>Peanut ntp-io</h1>
+
+    <h2>Scan and Initialize</h2>
+
+    <p align="right">Last updated: 2023/10/15</p> 
+
+    <h4>Interfaces</h4>
+
+    <p>
+      Before issuing Admin/NVM commands to NVMe SSDs, the script shall scans and initializes NVMe SSDs.
+      A NVMe SSD is represented as a function (which stands for a PCI function) handle by the extension module.
+      The NVMe extension module ("pxm_nvme.pxm") provides intuitive and easy-to-use interfaces
+      to scan NVMe SSDs and initialize them with little effort. Interfaces of the major functions
+      and structures devised for disk scan and initializations are listed as the following:
+    </p>
+
+    <table border="1">
+      <tr>
+        <td colspan="2">
+            scan(&EC)
+        </td>
+      </tr>
+      <tr>
+        <td>
+          EC
+        </td>
+        <td>
+          A call-by-reference parameter. <br>
+          An error code is updated to the passed-in variable after the function returns.
+        </td>
+      </tr>
+      <tr>
+        <td>
+          Return value
+        </td>
+        <td>
+          0: fail; with a non-zero error code updated to EC <br>
+          1: success; with zero value updated to EC
+        </td>
+      </tr>
+    </table>
+
+    <br>
+
+    <table border="1">
+      <tr>
+        <td colspan="2">
+            getDevNum(void)
+        </td>
+      </tr>
+      <tr>
+        <td>
+          void
+        </td>
+        <td>
+          No argument is required.
+        </td>
+      </tr>
+      <tr>
+        <td>
+          Return value
+        </td>
+        <td>
+          The number of NVMe SSDs detected.
+        </td>
+      </tr>
+    </table>
+
+    <br>
+
+    <table border="1">
+      <tr>
+        <td colspan="2">
+            getFuncHandle(&EC, DevNo)
+        </td>
+      </tr>
+      <tr>
+        <td>
+          EC
+        </td>
+        <td>
+          A call-by-reference parameter.<br>
+          An error code is updated to the passed-in variable after the function returns.
+        </td>
+      <tr>
+        <td>
+          DevNo
+        </td>
+        <td>
+          Range from 0 to n-1 if there are n NVMe SSDs detected by scan() function.
+        </td>
+      </tr>
+      </tr>
+      <tr>
+        <td>
+          Return value
+        </td>
+        <td>
+          0 : fail to get the function handle <br>
+          otherwise : the function handle
+        </td>
+      </tr>
+    </table>
+
+    <br>
+
+    <table border="1">
+      <tr>
+        <td colspan="2">
+          initA(&EC, funcHandle)  <br>
+          initA(&EC, funcHandle, &nASQSize) <br>
+          initA(&EC, funcHandle, &nASQSize, &nACQSize) <br>
+          initA(&EC, funcHandle, &nASQSize, &nACQSize, nIOCQNumPerPCCT) <br> <br>
+
+          Initialize the function with Admin submission queue and completion queue creation.
+        </td>
+      </tr>
+      <tr>
+        <td>
+          EC
+        </td>
+        <td>
+          A call-by-reference parameter.<br>
+          An error code is updated to the passed-in variable after the function returns.
+        </td>
+      <tr>
+        <td>
+          funcHandle 
+        </td>
+        <td>
+          The function handle which is going to be initialized.
+        </td>
+      </tr>
+      <tr>
+        <td>
+          nASQSize 
+        </td>
+        <td>
+          A call-by-reference parameter. <br>
+          Specifying the size of the Admin Submission Queue. The real size of the created
+          Admin Submission queue will be updted to this variable.
+        </td>
+      </tr>
+      <tr>
+        <td>
+          nACQSize 
+        </td>
+        <td>
+          A call-by-reference parameter. <br>
+          Specifying the size of the Admin Completion Queue. The real size of the created
+          Admin Completion queue will be updted to this variable.
+        </td>
+      </tr>
+      <tr>
+        <td>
+          nIOCQNumPerPCCT 
+        </td>
+        <td>
+          A call-by-reference parameter. <br>
+          Specifying the number of CQs polled per PCC (polling command completion) thread.
+        </td>
+      </tr>
+
+      </tr>
+      <tr>
+        <td>
+          Return value
+        </td>
+        <td>
+          0 : fail to initialize the function <br>
+          otherwise : success to initialize the function with Admin Submission/Completion
+          queue creations
+        </td>
+      </tr>
+    </table>
+
+    <br>
+
+    <table border="1">
+      <tr>
+        <td colspan="2">
+            init(&EC, funcHandle) <br>
+            init(&EC, funcHandle, struct nvme::queueInitParams_t &queueInitParams) <br> <br>
+            Initialize the function with Admin-queues and IO-queues creations.
+        </td>
+      </tr>
+      <tr>
+        <td>
+          EC
+        </td>
+        <td>
+          A call-by-reference parameter.<br>
+          An error code is updated to the passed-in variable after the function returns.
+        </td>
+      <tr>
+        <td>
+          funcHandle 
+        </td>
+        <td>
+          The function handle which is going to be initialized.
+        </td>
+      </tr>
+      </tr>
+      <tr>
+        <td>
+          queueInitParams 
+        </td>
+        <td>
+          A call-by-reference parameter.<br>
+          A structure of parameters specifying number of queues, sizes of queues, ..., etc.
+        </td>
+      </tr>
+      </tr>
+      <tr>
+        <td>
+          Return value
+        </td>
+        <td>
+          0 : fail to initialize the function <br>
+          otherwise : success to initialize the function with creations of Admin/IO
+          Submission/Completion queues
+        </td>
+      </tr>
+    </table>
+
+    <br>
+
+    <table>
+      <tr>
+        <td>
+          struct queueInitParams_t <br>
+          { <br>
+          &nbsp;&nbsp;&nbsp;&nbsp; var nASQSize; <br>
+          &nbsp;&nbsp;&nbsp;&nbsp; var nACQSize; <br>
+          &nbsp;&nbsp;&nbsp;&nbsp; var nIOSQNum; <br>
+          &nbsp;&nbsp;&nbsp;&nbsp; var nIOSQSize; <br>
+          &nbsp;&nbsp;&nbsp;&nbsp; var nIOSQNumPerIOCQ; <br>
+          &nbsp;&nbsp;&nbsp;&nbsp; var nIOCQSize; <br>
+          &nbsp;&nbsp;&nbsp;&nbsp; var nIOCQNumPerPCCT; <br>
+          &nbsp;&nbsp;&nbsp;&nbsp; setDef()  <br>
+          &nbsp;&nbsp;&nbsp;&nbsp; { <br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;     nASQSize = 0; <br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;     nACQSize = 0; <br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;     nIOSQNum = 0; <br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;     nIOSQSize = 0; <br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;     nIOSQNumPerIOCQ = 0; <br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;     nIOCQSize = 0; <br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;     nIOCQNumPerPCCT = 0; <br>
+          &nbsp;&nbsp;&nbsp;&nbsp; } <br>
+          }; <br>
+
+        </td>
+      </tr>
+    </table>
+
+    <h4>Example 1</h4>
+
+    <pre>
+      <code>
+#load &lt;pxm_nvme.pxm&gt;
+#load &lt;pxm_clib.pxm&gt;
+
+main()
+{
+    var EC;
+    var nDevs, n;
+    var funcHandle;
+
+    if (!nvme::scan(EC)) {
+        c::printf("Error %d: fail to scan NVMe SSDs\n", EC);
+        return;
+    }
+
+    nDevs = nvme::getDevNum();
+    if (nDevs &lt;= 0) {
+        c::printf("No NVMe SSD is detected.\n");
+        return;
+    }
+
+    for (n = 0; n &lt; nDevs; ++n) {
+        funcHandle = nvme::getFuncHandle(EC, n);
+
+        nvme::init(EC, funcHandle);
+    }
+}
+      </code>
+    </pre>
+
+
+    <h4>Example 2</h4>
+
+    <pre>
+      <code>
+#load &lt;pxm_nvme.pxm&gt;
+#load &lt;pxm_clib.pxm&gt;
+
+main()
+{
+    var EC;
+    var nDevs, n;
+    var funcHandle;
+    struct nvme::queueInitParams_t queueInitParams;
+
+    if (!nvme::scan(EC)) {
+        c::printf("Error %d: fail to scan NVMe SSDs\n", EC);
+        return;
+    }
+
+    nDevs = nvme::getDevNum();
+    if (nDevs &lt;= 0) {
+        c::printf("No NVMe SSD is detected.\n");
+        return;
+    }
+
+    queueParams.setDef();
+    queueParams.nASQSize = 64;
+    queueParams.nACQSize = 64;
+    queueParams.nIOSQNum = 4;
+    queueParams.nIOSQSize = 256;
+    queueParams.nIOSQNumPerIOCQ = 4;
+    queueParams.nIOCQSize = 1024;
+
+    for (n = 0; n &lt; nDevs; ++n) {
+        funcHandle = nvme::getFuncHandle(EC, n);
+
+        nvme::init(EC, funcHandle, queueParams);
+    }
+}
+      </code>
+    </pre>
+
+
+    <h4>Example 3</h4>
+    <p>
+        This example initialize the function with Admin Submission queue and Admin Completion queue
+        creations. No IO Submission queue or IO Completion queue is created. After the initialization,
+        the script wants to create IO queues itself.
+    </p>
+
+    <pre>
+      <code>
+#load &lt;pxm_nvme.pxm&gt;
+#load &lt;pxm_clib.pxm&gt;
+
+main()
+{
+    var EC;
+    var nDevs, n;
+    var funcHandle;
+
+    if (!nvme::scan(EC)) {
+        c::printf("Error %d: fail to scan NVMe SSDs\n", EC);
+        return;
+    }
+
+    nDevs = nvme::getDevNum();
+    if (nDevs &lt;= 0) {
+        c::printf("No NVMe SSD is detected.\n");
+        return;
+    }
+
+    for (n = 0; n &lt; nDevs; ++n) {
+        funcHandle = nvme::getFuncHandle(EC, n);
+
+        nvme::initA(EC, funcHandle);
+    }
+}
+      </code>
+    </pre>
+
+
+    <script>
+        var lastUpdated = new Date(document.lastModified);
+        var options = { year: 'numeric', month: 'long', day: 'numeric' };
+        var formattedDate = lastUpdated.toLocaleDateString('en-US', options);
+        document.getElementById("last-updated").innerHTML = formattedDate;
+    </script>
+
+
+  </div>
+
+
+</body>
+</html>
+
