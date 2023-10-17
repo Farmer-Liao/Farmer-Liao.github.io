@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Peanut NVMe Test Package - IO</title>
+    <meta name="author" content="Farmer Liao">
+    <meta name="description" content="Peanut Script Language Introduction">
+    <meta name="keywords" content="Peanut, Script, Language, Programming, C, Python, NVMe, SSD, Test, TCG, Opal">
+    <link rel="stylesheet" type="text/css" href="styles.css">
+</head>
+<body>
+
+  <div id="content">
+    <h1>Peanut ntp-io</h1>
+
+    <h2>Create IO Submission/Completion Queues</h2>
+
+    <p align="right">Last updated: 2023/10/17</p> 
+
+    <h4>Use init()</h4>
+
+    <p>
+        IO submission queues and completion queues can be created by the init() function.
+    </p>
+
+    <h5> Example 1 </h5>
+
+    <p>
+        This example script calls init() with only 2 arguments, which wants init() function
+        create IO submission queues and completion queues by a default setting. Usually 4
+        IO submission queues and 1 IO completion queue are created. After IO queues
+        are created, the number of IO submission queues can be known by getIOSQNum() function.
+        Next, each queue's handle can be got by getSQHandle(). With the queue handle, the
+        script can then submit NVM commands.
+    </p>
+
+    <pre>
+      <code>
+    funcHandle = nvme::getFuncHandle(EC, 0);
+    nvme::init(EC, funcHandle);
+    iosqnum = nvme::getIOSQNum(EC, funcHandle);
+    for (sqid = 1; sqid &lt;= iosqnum; ++sqid) {
+        sqhandle = nvme::getSQHandle(EC, funcHandle, sqid);
+        ...
+    }
+      </code>
+    </pre>
+
+    <h5> Example 2 </h5>
+
+    <p>
+        This example script calls init() with all 3 arguments, which wants init() function
+        create IO submission queues and completion queues by the specified settings.
+        In this example, it wants to create 32 IO Submission queues with size 128;
+        also create 1 completion queue with size 512 for every 4 IO Submission queues.
+        There are 7 parameters that can be specified in nvme::queueInitParams_t structure.
+        The init() function will apply default settings for not-specified parameters.
+    </p>
+
+    <p>
+        Note that the real number of queues and real size of queues may be different
+        from the specified, since the init() function would peek the SSD's capabilities
+        and does adaptions.
+    </p>
+
+    <pre>
+      <code>
+    struct nvme::queueInitParams_t qInitParams;
+
+    funcHandle = nvme::getFuncHandle(EC, 0);
+    qInitParams.setDef();
+    qInitParams.nIOSQNum = 32;
+    qInitParams.nIOSQSize = 128;
+    qInitParams.nIOSQNumPerIOCQ = 4;
+    qInitParams.nIOCQSize = 512;
+    nvme::init(EC, funcHandle, qInitParams);
+    iosqnum = nvme::getIOSQNum(EC, funcHandle);
+    for (sqid = 1; sqid &lt;= iosqnum; ++sqid) {
+        sqhandle = nvme::getSQHandle(EC, funcHandle, sqid);
+        ...
+    }
+      </code>
+    </pre>
+
+
+    <h4>Use createIOSQ() and createIOCQ()</h4>
+
+    <p>
+        Another way to create IO queues is to issue "Create I/O Submission Queue" and
+        "Create I/O Completion Queue" commands. Before that, the Admin submission queue
+        and completion queue should be created, and it was achieved by the initA() function.
+        
+    </p>
+
+    <pre>
+      <code>
+    funcHandle = nvme::getFuncHandle(EC, 0);
+    nASQSize = nACQSize = 512;
+    nvme::initA(EC, funcHandle, nASQSize, nACQSize);
+    nMaxIOCQNum = nvme::getMaxIOCQNum(EC, funcHandle);
+    nMaxIOSQNum = nvme::getMaxIOSQNum(EC, funcHandle);
+    nMaxIOQSize = nvme::getMaxIOQSize(EC, funcHandle);
+    cmdHandle = nvme::admc::createIOCQ(EC, funcHandle, cqid=1, 256);
+    // poll command complete
+    cmdHandle = nvme::admc::createIOSQ(EC, funcHandle, sqid=1, cqid=1, 256);
+    // poll command complete
+    sqHandle = nvme::getSQHandle(EC, funcHandle, sqid=1);
+    ...
+      </code>
+    </pre>
+
+
+    <script>
+        var lastUpdated = new Date(document.lastModified);
+        var options = { year: 'numeric', month: 'long', day: 'numeric' };
+        var formattedDate = lastUpdated.toLocaleDateString('en-US', options);
+        document.getElementById("last-updated").innerHTML = formattedDate;
+    </script>
+
+
+  </div>
+
+
+</body>
+</html>
+
