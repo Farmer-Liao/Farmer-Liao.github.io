@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Peanut NVMe Test Package - IO</title>
+    <meta name="author" content="Farmer Liao">
+    <meta name="description" content="Peanut Script Language Introduction">
+    <meta name="keywords" content="Peanut, Script, Language, Programming, C, Python, NVMe, SSD, Test, TCG, Opal">
+    <link rel="stylesheet" type="text/css" href="styles.css">
+</head>
+<body>
+
+  <div id="content">
+    <h1>Peanut ntp-io</h1>
+
+    <h2>Issue NVM Commands</h2>
+
+    <p align="right">Last updated: 2023/10/29</p> 
+
+
+    <h4>Namespace nvme::ioc</h4>
+    <p>
+        The functions which are devised to issue NVM commands are called with nvme::ioc namespace
+        resolution.
+    </p>
+
+
+    <h4>IO Submission Queue Handle</h4>
+    <p>
+        To issue an NVM command to the NVMe SSD, the IO Submission Queue handle should be specified.<br><br>
+        To issue an NVM command to the NVMe SSD through IO Submission Queue 1, the handle of the IO
+        Submission Queue 1 should be specified to the function.<br><br>
+        To issue an NVM command through Submission Queue 2, the handle of the IO Submission Queue 2
+        should be specified to the function.
+    </p>
+
+
+    <h4>Command Handle</h4>
+    <p>
+        After the function has issued an NVM command to the NVMe SSD, a command handle is returned by the
+        function.
+    </p>
+
+
+    <h4>pspp()</h4>
+    <p>
+        The pspp() is used to poll the status of the command issued.
+    </p>
+
+
+    <h4>Example 1</h4>
+
+    <p>
+        This example shows how to issue a read command to the NVMe SSD. This example
+        assumes that the namespace does not support metadata.<br><br>
+        The 'struct funcInfo_t' and 'struct namespace_t' are structures implemented
+        in script to ease retrieve controller (NVMe controller, or PCI function) information
+        and information of NVMe namespaces.
+    </p>
+
+    <pre>
+      <code>
+    struct funcInfo_t funcInfo;
+    struct namespace_t ns;
+
+    funcHandle = nvme::getFuncHandle(EC, 0);
+    nvme::init(EC, funcHandle);
+
+    funcInfo.Invalidate();
+    funcInfo.RetrieveInfo(0, funcHandle);
+    if (funcInfo.GetActiveNSIdNum() &lt;= 0) {
+        c::printf("No namespace is available!\n\n");
+        goto TestEnd;
+    }
+
+    funcInfo.CopyTheNthNamespace(0, ns);
+
+    sq1Handle = nvme::getSQHandle(EC, funcHandle, 1);
+
+    nLBA = 0;
+    nLen = 4;
+    bufHandle = nvme::ddbAlloc(EC, funcHandle, ns.GetLBADataSize_byte() * nLen);
+
+    do 
+        cmdHandle = nvme::ioc::read(EC, sq1Handle, bufHandle, nLBA, nLen);
+    while (cmdHandle == 0);
+
+    while (1) {
+        stsVal = nvme::pspp(cmdHandle);
+        if (stsVal)
+            break;
+    }
+
+    if (stsVal &#38; nvme::cmdCplFlag) {
+        nvme::ddbDump(EC, bufHandle, 0, 0);
+    }
+    else {
+        ...
+    }
+      </code>
+    </pre>
+
+
+    <h4>Example 2</h4>
+
+    <p>
+        This example shows how to issue a write command to the NVMe SSD whose
+        namespace supports metadata and is formatted to transmit metadata immediately
+        after each LBA data.<br><br>
+        The value 0xABCDABCD is filled into the first 4 bytes of the metadata of each LBA.
+    </p>
+
+    <pre>
+      <code>
+    struct funcInfo_t funcInfo;
+    struct namespace_t ns;
+
+    funcHandle = nvme::getFuncHandle(EC, 0);
+    nvme::init(EC, funcHandle);
+
+    funcInfo.Invalidate();
+    funcInfo.RetrieveInfo(0, funcHandle);
+    if (funcInfo.GetActiveNSIdNum() &lt;= 0) {
+        c::printf("No namespace is available!\n\n");
+        goto TestEnd;
+    }
+
+    funcInfo.CopyTheNthNamespace(0, ns);
+
+    sq1Handle = nvme::getSQHandle(EC, funcHandle, 1);
+
+    LBADataSize = ns.GetLBADataSize_byte();
+    MetadataSize = ns.GetMetadataSize_byte();
+    ExtLBADataSize = ns.GetExtLBADataSize_byte();
+
+    nLBA = 0;
+    nLen = 4;
+
+    if (LBADataSize &lt; ExtLBADataSize) {
+        bufHandle = nvme::ddbAlloc(EC, funcHandle, ExtLBADataSize * nLen);
+        for (i = 1; i &lt;= nLen; ++i) {
+            nvme::ddbWriteInt32(EC, bufHandle, i * ExtLBADataSize - MetadataSize, 1, 0xABCDABCD);
+            ...
+        }
+    }
+    else
+        bufHandle = nvme::ddbAlloc(EC, funcHandle, LBADataSize * nLen);
+
+    do 
+        cmdHandle = nvme::ioc::write(EC, sq1Handle, bufHandle, nLBA, nLen);
+    while (cmdHandle == 0);
+
+    while (1) {
+        stsVal = nvme::pspp(cmdHandle);
+        if (stsVal)
+            break;
+    }
+      </code>
+    </pre>
+
+
+    <script>
+        var lastUpdated = new Date(document.lastModified);
+        var options = { year: 'numeric', month: 'long', day: 'numeric' };
+        var formattedDate = lastUpdated.toLocaleDateString('en-US', options);
+        document.getElementById("last-updated").innerHTML = formattedDate;
+    </script>
+
+
+  </div>
+
+
+</body>
+</html>
+

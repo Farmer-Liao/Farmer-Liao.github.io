@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Peanut NVMe Test Package - IO</title>
+    <meta name="author" content="Farmer Liao">
+    <meta name="description" content="Peanut Script Language Introduction">
+    <meta name="keywords" content="Peanut, Script, Language, Programming, C, Python, NVMe, SSD, Test, TCG, Opal">
+    <link rel="stylesheet" type="text/css" href="styles.css">
+</head>
+<body>
+
+  <div id="content">
+    <h1>Peanut ntp-io</h1>
+
+    <h2>Issue Admin Commands</h2>
+
+    <p align="right">Last updated: 2023/10/29</p> 
+
+
+    <h4>Namespace nvme::admc</h4>
+    <p>
+        The functions which are devised to issue Admin commands are called with nvme::admc namespace
+        resolution.
+    </p>
+
+
+    <h4>Function Handle</h4>
+    <p>
+        To issue an Admin command to the NVMe SSD, the function (PCI function; either physical function or
+        virtual function) handle should be specified.
+    </p>
+
+
+    <h4>Command Handle</h4>
+    <p>
+        After the function has issued an Admin command to the NVMe SSD, a command handle is returned by the
+        function.
+    </p>
+
+
+    <h4>pspp()</h4>
+    <p>
+        The pspp() is used to poll the status of the command issued. The command handle is passed to pspp() function.
+        The pspp() function returns a 64-bit value with:<br>
+        <span class="indented">(1) command completion flag</span><br>
+        <span class="indented">(2) command timeout flag</span><br>
+        <span class="indented">(3) status field of the completion queu entry</span><br>
+        <span class="indented">(4) command specific field of the completion queue entry</span>
+    </p>
+
+
+    <h4> Example</h4>
+
+    <p>
+        This example shows how to issue an identify command to retrieve the Identify
+        Controller data structure.
+    </p>
+
+    <pre>
+      <code>
+    funcHandle = nvme::getFuncHandle(EC, 0);
+    nvme::init(EC, funcHandle);
+    bufHandle = nvme::ddbAlloc(EC, funcHandle, 4096);
+    csn = 1;
+    nsid = 0;
+    CNTLID = 0;
+
+    do 
+        cmdHandle = nvme::admc::identify(EC, funcHandle, cns, nsid, CNTLID, bufHandle);
+    while (cmdHandle == 0);
+
+    while (1) {
+        stsVal = nvme::pspp(cmdHandle);
+        if (stsVal)
+            break;
+    }
+
+    if (stsVal &#38; nvme::cmdCplFlag) {
+        nvme::ddbDump(EC, bufHandle, 0, 0);
+    }
+    else {
+        ...
+    }
+      </code>
+    </pre>
+
+
+    <script>
+        var lastUpdated = new Date(document.lastModified);
+        var options = { year: 'numeric', month: 'long', day: 'numeric' };
+        var formattedDate = lastUpdated.toLocaleDateString('en-US', options);
+        document.getElementById("last-updated").innerHTML = formattedDate;
+    </script>
+
+
+  </div>
+
+
+</body>
+</html>
+
