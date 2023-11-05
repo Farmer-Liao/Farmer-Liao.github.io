@@ -14,16 +14,17 @@
 
     <h2>Scan and Initialize</h2>
 
-    <p align="right">Last updated: 2023/10/15</p> 
+    <p align="right">Last updated: 2023/11/5</p> 
 
     <h4>Interfaces</h4>
 
     <p>
       Before issuing Admin/NVM commands to NVMe SSDs, the script shall scans and initializes NVMe SSDs.
-      A NVMe SSD is represented as a function (which stands for a PCI function) handle by the extension module.
+      A NVMe SSD is represented as a controller handle (which stands for an NVMe controller and the corresponding
+      PCI function) by the extension module.
       The NVMe extension module ("pxm_nvme.pxm") provides intuitive and easy-to-use interfaces
       to scan NVMe SSDs and initialize them with little effort. Interfaces of the major functions
-      and structures devised for disk scan and initializations are listed as the following:
+      and structures for disk scan and initializations are listed as the following:
     </p>
 
     <table border="1">
@@ -83,7 +84,7 @@
     <table border="1">
       <tr>
         <td colspan="2">
-            getFuncHandle(&EC, DevNo)
+            getCntlHandle(&EC, DevNo)
         </td>
       </tr>
       <tr>
@@ -108,8 +109,9 @@
           Return value
         </td>
         <td>
-          0 : fail to get the function handle <br>
-          otherwise : the function handle
+          0 : fail to get the controller handle <br>
+          otherwise : a controller handle; this controller handle represents a NVMe controller corresponding
+             to the device's function 0.
         </td>
       </tr>
     </table>
@@ -119,12 +121,12 @@
     <table border="1">
       <tr>
         <td colspan="2">
-          initA(&EC, funcHandle)  <br>
-          initA(&EC, funcHandle, &nASQSize) <br>
-          initA(&EC, funcHandle, &nASQSize, &nACQSize) <br>
-          initA(&EC, funcHandle, &nASQSize, &nACQSize, nIOCQNumPerPCCT) <br> <br>
+          initA(&EC, cntlHandle)  <br>
+          initA(&EC, cntlHandle, &nASQSize) <br>
+          initA(&EC, cntlHandle, &nASQSize, &nACQSize) <br>
+          initA(&EC, cntlHandle, &nASQSize, &nACQSize, nIOCQNumPerPCCT) <br> <br>
 
-          Initialize the function with Admin submission queue and completion queue creation.
+          Initialize the controller and create Admin submission queue and completion queue.
         </td>
       </tr>
       <tr>
@@ -137,10 +139,10 @@
         </td>
       <tr>
         <td>
-          funcHandle 
+          cntlHandle 
         </td>
         <td>
-          The function handle which is going to be initialized.
+          The controller handle which is going to be initialized.
         </td>
       </tr>
       <tr>
@@ -179,8 +181,8 @@
           Return value
         </td>
         <td>
-          0 : fail to initialize the function <br>
-          otherwise : success to initialize the function with Admin Submission/Completion
+          0 : fail to initialize the controller <br>
+          otherwise : success to initialize the controller with Admin Submission/Completion
           queue creations
         </td>
       </tr>
@@ -191,9 +193,9 @@
     <table border="1">
       <tr>
         <td colspan="2">
-            init(&EC, funcHandle) <br>
-            init(&EC, funcHandle, struct nvme::queueInitParams_t &queueInitParams) <br> <br>
-            Initialize the function with Admin-queues and IO-queues creations.
+            init(&EC, cntlHandle) <br>
+            init(&EC, cntlHandle, struct nvme::queueInitParams_t &queueInitParams) <br> <br>
+            Initialize the controller and create Admin-queues and IO-queues.
         </td>
       </tr>
       <tr>
@@ -206,10 +208,10 @@
         </td>
       <tr>
         <td>
-          funcHandle 
+          cntlHandle 
         </td>
         <td>
-          The function handle which is going to be initialized.
+          The controller handle which is going to be initialized.
         </td>
       </tr>
       </tr>
@@ -228,8 +230,8 @@
           Return value
         </td>
         <td>
-          0 : fail to initialize the function <br>
-          otherwise : success to initialize the function with creations of Admin/IO
+          0 : fail to initialize the controller <br>
+          otherwise : success to initialize the controller with creations of Admin/IO
           Submission/Completion queues
         </td>
       </tr>
@@ -276,7 +278,7 @@ main()
 {
     var EC;
     var nDevs, n;
-    var funcHandle;
+    var cntlHandle;
 
     if (!nvme::scan(EC)) {
         c::printf("Error %d: fail to scan NVMe SSDs\n", EC);
@@ -290,9 +292,9 @@ main()
     }
 
     for (n = 0; n &lt; nDevs; ++n) {
-        funcHandle = nvme::getFuncHandle(EC, n);
+        cntlHandle = nvme::getCntlHandle(EC, n);
 
-        nvme::init(EC, funcHandle);
+        nvme::init(EC, cntlHandle);
     }
 }
       </code>
@@ -310,7 +312,7 @@ main()
 {
     var EC;
     var nDevs, n;
-    var funcHandle;
+    var cntlHandle;
     struct nvme::queueInitParams_t queueInitParams;
 
     if (!nvme::scan(EC)) {
@@ -333,9 +335,9 @@ main()
     queueParams.nIOCQSize = 1024;
 
     for (n = 0; n &lt; nDevs; ++n) {
-        funcHandle = nvme::getFuncHandle(EC, n);
+        cntlHandle = nvme::getCntlHandle(EC, n);
 
-        nvme::init(EC, funcHandle, queueParams);
+        nvme::init(EC, cntlHandle, queueParams);
     }
 }
       </code>
@@ -344,7 +346,7 @@ main()
 
     <h4>Example 3</h4>
     <p>
-        This example initialize the function with Admin Submission queue and Admin Completion queue
+        This example initialize the controller with Admin Submission queue and Admin Completion queue
         creations. No IO Submission queue or IO Completion queue is created. After the initialization,
         the script wants to create IO queues itself.
     </p>
@@ -358,7 +360,7 @@ main()
 {
     var EC;
     var nDevs, n;
-    var funcHandle;
+    var cntlHandle;
 
     if (!nvme::scan(EC)) {
         c::printf("Error %d: fail to scan NVMe SSDs\n", EC);
@@ -372,9 +374,9 @@ main()
     }
 
     for (n = 0; n &lt; nDevs; ++n) {
-        funcHandle = nvme::getFuncHandle(EC, n);
+        cntlHandle = nvme::getCntlHandle(EC, n);
 
-        nvme::initA(EC, funcHandle);
+        nvme::initA(EC, cntlHandle);
     }
 }
       </code>

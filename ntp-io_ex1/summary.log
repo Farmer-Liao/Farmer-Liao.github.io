@@ -1,54 +1,10 @@
-2023/09/17 09:53:52
+2023/11/05 10:03:03
 
-Detect 2 devices.
+Detect 1 devices.
 
-On device 0.
+On Device 0.
 --------------------------------------------------------------------------------
-Identify Controller (summary), FuncHandle = 0000562DA8F97DB0h
-    PCI Vendor ID                                   : 144Dh
-    Serial Number                                   : S5GXNS0RC36104Y
-    Model Number                                    : Samsung SSD 980 PRO 1TB
-    Firmware Revision                               : 4B2QGXA7
-    Controller Identifier (CNTLID)                  : 0006h
-    Memory Page Size                                : 4096
-    MDTS                                            : 080000h
-    Support Virtalization Management                : 0
-    Support Namespace Management                    : 0
-    Support FW Commit/Download                      : 1
-    Support Format NVM                              : 1
-    Support Sec. Send/Receive                       : 1
-    Support Verify command                          : 0
-    Support Reservations                            : 0
-    Support Write Zeroes command                    : 0
-    Support Dataset Management                      : 1
-    Support Write Uncorrectable command             : 1
-    Support Compare command                         : 1
-    Total NVM Capacity                              : 1000204886016
-    Unallocated NVM Capacity                        : 0
-    Max. value of a valid NSID (NN)                 : 1
-    Valid NSID List                                 : {1}
-    Admin SQ Size                                   : 64
-    Number of IO SQs                                : 4
-    IO SQ Size                                      : 256
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
-Identify Namespace-1 (summary)
-    Namespace Size (NSZE)                           : 0000000074706DB0h
-    Namespace Capacity (NCAP)                       : 0000000074706DB0h
-    Namespace Utilization (NUSE)                    : 0000000000003BD0h
-    Number of LBA Formats (NLBAF) (0's based)       : 00h
-    LBA Data Size                                   : 512
-    Max Data Tranfer Size in LBA                    : 1024
-    LBAF0 Data Size                                 : 9
-    LBAF0 Metadata Size                             : 0
---------------------------------------------------------------------------------
-
-Info: device 0 does not support SR-IOV virtual functions.
-
-On device 1.
---------------------------------------------------------------------------------
-Identify Controller (summary), FuncHandle = 0000562DA8FA6BD0h
+Identify Controller (summary), CntlHandle = 000055E619716CD0h
     PCI Vendor ID                                   : 144Dh
     Serial Number                                   : S4YNNA0R302097
     Model Number                                    : SAMSUNG MZWLJ1T9HBJR-00007
@@ -61,6 +17,8 @@ Identify Controller (summary), FuncHandle = 0000562DA8FA6BD0h
     Support FW Commit/Download                      : 1
     Support Format NVM                              : 1
     Support Sec. Send/Receive                       : 1
+    Firmware Updates                                : 17h
+    Firmware Update Granularity                     : 255
     Support Verify command                          : 0
     Support Reservations                            : 1
     Support Write Zeroes command                    : 1
@@ -68,7 +26,7 @@ Identify Controller (summary), FuncHandle = 0000562DA8FA6BD0h
     Support Write Uncorrectable command             : 1
     Support Compare command                         : 1
     Total NVM Capacity                              : 1920383410176
-    Unallocated NVM Capacity                        : 1645505503232
+    Unallocated NVM Capacity                        : 1860253868032
     Max. value of a valid NSID (NN)                 : 32
     Valid NSID List                                 : {1}
     Admin SQ Size                                   : 64
@@ -83,6 +41,10 @@ Identify Namespace-1 (summary)
     Namespace Utilization (NUSE)                    : 0000000001000000h
     Number of LBA Formats (NLBAF) (0's based)       : 04h
     LBA Data Size                                   : 512
+    MetaData Size                                   : 0
+    ExtLBA Data Size                                : 512
+    Support MetaData Tx. After LBA Data             : 1
+    Support MetaData Tx. Separately                 : 1
     Max Data Tranfer Size in LBA                    : 256
     LBAF0 Data Size                                 : 9
     LBAF0 Metadata Size                             : 0
@@ -103,6 +65,10 @@ Identify Namespace-FFFFFFFFh (summary)
     Namespace Utilization (NUSE)                    : 0000000000000000h
     Number of LBA Formats (NLBAF) (0's based)       : 04h
     LBA Data Size                                   : 512
+    MetaData Size                                   : 0
+    ExtLBA Data Size                                : 512
+    Support MetaData Tx. After LBA Data             : 1
+    Support MetaData Tx. Separately                 : 1
     Max Data Tranfer Size in LBA                    : 256
     LBAF0 Data Size                                 : 9
     LBAF0 Metadata Size                             : 0
@@ -118,8 +84,8 @@ Identify Namespace-FFFFFFFFh (summary)
 
 Info: disable all virtual functions
 
-2023/09/17 09:53:54
-Info: delete all namespaces on PF (handle=0000562da8fa6bd0h CNTLID=0041h) ...
+2023/11/05 10:03:04
+Info: delete all namespaces on Device 0 ...
 	On namespace 1:
 	Attached controller list = {0041h}
 	Detach controllers from namespace 1 ...
@@ -155,134 +121,9 @@ Info: delete all namespaces on PF (handle=0000562da8fa6bd0h CNTLID=0041h) ...
 	Detach controllers from namespace 7 ...
 	Delete namespace 7 ...
 
-	On namespace 8:
-	Attached controller list = {0007h}
-	Detach controllers from namespace 8 ...
-	Delete namespace 8 ...
-
-	On namespace 9:
-	Attached controller list = {0008h}
-	Detach controllers from namespace 9 ...
-	Delete namespace 9 ...
-
-	On namespace 10:
-	Attached controller list = {0009h}
-	Detach controllers from namespace 10 ...
-	Delete namespace 10 ...
-
-	On namespace 11:
-	Attached controller list = {000Ah}
-	Detach controllers from namespace 11 ...
-	Delete namespace 11 ...
-
-	On namespace 12:
-	Attached controller list = {000Bh}
-	Detach controllers from namespace 12 ...
-	Delete namespace 12 ...
-
-	On namespace 13:
-	Attached controller list = {000Ch}
-	Detach controllers from namespace 13 ...
-	Delete namespace 13 ...
-
-	On namespace 14:
-	Attached controller list = {000Dh}
-	Detach controllers from namespace 14 ...
-	Delete namespace 14 ...
-
-	On namespace 15:
-	Attached controller list = {000Eh}
-	Detach controllers from namespace 15 ...
-	Delete namespace 15 ...
-
-	On namespace 16:
-	Attached controller list = {000Fh}
-	Detach controllers from namespace 16 ...
-	Delete namespace 16 ...
-
-	On namespace 17:
-	Attached controller list = {0010h}
-	Detach controllers from namespace 17 ...
-	Delete namespace 17 ...
-
-	On namespace 18:
-	Attached controller list = {0011h}
-	Detach controllers from namespace 18 ...
-	Delete namespace 18 ...
-
-	On namespace 19:
-	Attached controller list = {0012h}
-	Detach controllers from namespace 19 ...
-	Delete namespace 19 ...
-
-	On namespace 20:
-	Attached controller list = {0013h}
-	Detach controllers from namespace 20 ...
-	Delete namespace 20 ...
-
-	On namespace 21:
-	Attached controller list = {0014h}
-	Detach controllers from namespace 21 ...
-	Delete namespace 21 ...
-
-	On namespace 22:
-	Attached controller list = {0015h}
-	Detach controllers from namespace 22 ...
-	Delete namespace 22 ...
-
-	On namespace 23:
-	Attached controller list = {0016h}
-	Detach controllers from namespace 23 ...
-	Delete namespace 23 ...
-
-	On namespace 24:
-	Attached controller list = {0017h}
-	Detach controllers from namespace 24 ...
-	Delete namespace 24 ...
-
-	On namespace 25:
-	Attached controller list = {0018h}
-	Detach controllers from namespace 25 ...
-	Delete namespace 25 ...
-
-	On namespace 26:
-	Attached controller list = {0019h}
-	Detach controllers from namespace 26 ...
-	Delete namespace 26 ...
-
-	On namespace 27:
-	Attached controller list = {001Ah}
-	Detach controllers from namespace 27 ...
-	Delete namespace 27 ...
-
-	On namespace 28:
-	Attached controller list = {001Bh}
-	Detach controllers from namespace 28 ...
-	Delete namespace 28 ...
-
-	On namespace 29:
-	Attached controller list = {001Ch}
-	Detach controllers from namespace 29 ...
-	Delete namespace 29 ...
-
-	On namespace 30:
-	Attached controller list = {001Dh}
-	Detach controllers from namespace 30 ...
-	Delete namespace 30 ...
-
-	On namespace 31:
-	Attached controller list = {001Eh}
-	Detach controllers from namespace 31 ...
-	Delete namespace 31 ...
-
-	On namespace 32:
-	Attached controller list = {001Fh}
-	Detach controllers from namespace 32 ...
-	Delete namespace 32 ...
-
-Info: set VFs of PF (handle=0000562da8fa6bd0h CNTLID=0041h) offline ...
-Info: free VFs, belonging to PF (handle=0000562da8fa6bd0h CNTLID=0041h), flexible resources ...
+Info: set VFs of PF (handle=000055E619716CD0h CNTLID=0041h) offline ...
+Info: free VFs, belonging to PF (handle=000055E619716CD0h CNTLID=0041h), flexible resources ...
 
    !!! Test Finish !!!
 
-2023/09/17 10:08:43
+2023/11/05 10:04:36

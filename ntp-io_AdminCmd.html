@@ -14,27 +14,27 @@
 
     <h2>Issue Admin Commands</h2>
 
-    <p align="right">Last updated: 2023/10/29</p> 
+    <p align="right">Last updated: 2023/11/5</p> 
 
 
     <h4>Namespace nvme::admc</h4>
     <p>
-        The functions which are devised to issue Admin commands are called with nvme::admc namespace
+        The Peanut functions which are devised to issue Admin commands are called with nvme::admc namespace
         resolution.
     </p>
 
 
-    <h4>Function Handle</h4>
+    <h4>Controller Handle</h4>
     <p>
-        To issue an Admin command to the NVMe SSD, the function (PCI function; either physical function or
-        virtual function) handle should be specified.
+        To issue an Admin command to the NVMe SSD, the controller handle (representing a NVMe controller
+        corresponding to one PCI function; either physical function or virtual function) should be specified.
     </p>
 
 
     <h4>Command Handle</h4>
     <p>
-        After the function has issued an Admin command to the NVMe SSD, a command handle is returned by the
-        function.
+        After the called function has issued an Admin command to the NVMe SSD, a command handle is returned by the
+        called function.
     </p>
 
 
@@ -58,15 +58,15 @@
 
     <pre>
       <code>
-    funcHandle = nvme::getFuncHandle(EC, 0);
-    nvme::init(EC, funcHandle);
-    bufHandle = nvme::ddbAlloc(EC, funcHandle, 4096);
+    cntlHandle = nvme::getCntlHandle(EC, 0);
+    nvme::init(EC, cntlHandle);
+    bufHandle = nvme::ddbAlloc(EC, cntlHandle, 4096);
     csn = 1;
     nsid = 0;
     CNTLID = 0;
 
     do 
-        cmdHandle = nvme::admc::identify(EC, funcHandle, cns, nsid, CNTLID, bufHandle);
+        cmdHandle = nvme::admc::identify(EC, cntlHandle, cns, nsid, CNTLID, bufHandle);
     while (cmdHandle == 0);
 
     while (1) {

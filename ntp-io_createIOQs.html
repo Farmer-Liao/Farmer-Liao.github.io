@@ -14,7 +14,7 @@
 
     <h2>Create IO Submission and Completion Queues</h2>
 
-    <p align="right">Last updated: 2023/10/17</p> 
+    <p align="right">Last updated: 2023/11/5</p> 
 
     <h4>Use init()</h4>
 
@@ -35,11 +35,11 @@
 
     <pre>
       <code>
-    funcHandle = nvme::getFuncHandle(EC, 0);
-    nvme::init(EC, funcHandle);
-    iosqnum = nvme::getIOSQNum(EC, funcHandle);
+    cntlHandle = nvme::getCntlHandle(EC, 0);
+    nvme::init(EC, cntlHandle);
+    iosqnum = nvme::getIOSQNum(EC, cntlHandle);
     for (sqid = 1; sqid &lt;= iosqnum; ++sqid) {
-        sqhandle = nvme::getSQHandle(EC, funcHandle, sqid);
+        sqhandle = nvme::getSQHandle(EC, cntlHandle, sqid);
         ...
     }
       </code>
@@ -66,16 +66,16 @@
       <code>
     struct nvme::queueInitParams_t qInitParams;
 
-    funcHandle = nvme::getFuncHandle(EC, 0);
+    cntlHandle = nvme::getCntlHandle(EC, 0);
     qInitParams.setDef();
     qInitParams.nIOSQNum = 32;
     qInitParams.nIOSQSize = 128;
     qInitParams.nIOSQNumPerIOCQ = 4;
     qInitParams.nIOCQSize = 512;
-    nvme::init(EC, funcHandle, qInitParams);
-    iosqnum = nvme::getIOSQNum(EC, funcHandle);
+    nvme::init(EC, cntlHandle, qInitParams);
+    iosqnum = nvme::getIOSQNum(EC, cntlHandle);
     for (sqid = 1; sqid &lt;= iosqnum; ++sqid) {
-        sqhandle = nvme::getSQHandle(EC, funcHandle, sqid);
+        sqhandle = nvme::getSQHandle(EC, cntlHandle, sqid);
         ...
     }
       </code>
@@ -93,17 +93,17 @@
 
     <pre>
       <code>
-    funcHandle = nvme::getFuncHandle(EC, 0);
+    cntlHandle = nvme::getCntlHandle(EC, 0);
     nASQSize = nACQSize = 512;
-    nvme::initA(EC, funcHandle, nASQSize, nACQSize);
-    nMaxIOCQNum = nvme::getMaxIOCQNum(EC, funcHandle);
-    nMaxIOSQNum = nvme::getMaxIOSQNum(EC, funcHandle);
-    nMaxIOQSize = nvme::getMaxIOQSize(EC, funcHandle);
-    cmdHandle = nvme::admc::createIOCQ(EC, funcHandle, cqid=1, 256);
+    nvme::initA(EC, cntlHandle, nASQSize, nACQSize);
+    nMaxIOCQNum = nvme::getMaxIOCQNum(EC, cntlHandle);
+    nMaxIOSQNum = nvme::getMaxIOSQNum(EC, cntlHandle);
+    nMaxIOQSize = nvme::getMaxIOQSize(EC, cntlHandle);
+    cmdHandle = nvme::admc::createIOCQ(EC, cntlHandle, cqid=1, 256);
     // poll command complete
-    cmdHandle = nvme::admc::createIOSQ(EC, funcHandle, sqid=1, cqid=1, 256);
+    cmdHandle = nvme::admc::createIOSQ(EC, cntlHandle, sqid=1, cqid=1, 256);
     // poll command complete
-    sqHandle = nvme::getSQHandle(EC, funcHandle, sqid=1);
+    sqHandle = nvme::getSQHandle(EC, cntlHandle, sqid=1);
     ...
       </code>
     </pre>

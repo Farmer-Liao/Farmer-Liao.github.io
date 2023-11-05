@@ -14,12 +14,12 @@
 
     <h2>Issue NVM Commands</h2>
 
-    <p align="right">Last updated: 2023/10/29</p> 
+    <p align="right">Last updated: 2023/11/5</p> 
 
 
     <h4>Namespace nvme::ioc</h4>
     <p>
-        The functions which are devised to issue NVM commands are called with nvme::ioc namespace
+        The Peanut functions which are devised to issue NVM commands are called with nvme::ioc namespace
         resolution.
     </p>
 
@@ -52,33 +52,33 @@
     <p>
         This example shows how to issue a read command to the NVMe SSD. This example
         assumes that the namespace does not support metadata.<br><br>
-        The 'struct funcInfo_t' and 'struct namespace_t' are structures implemented
+        The 'struct cntlInfo_t' and 'struct namespace_t' are structures implemented
         in script to ease retrieve controller (NVMe controller, or PCI function) information
         and information of NVMe namespaces.
     </p>
 
     <pre>
       <code>
-    struct funcInfo_t funcInfo;
+    struct cntlInfo_t cntlInfo;
     struct namespace_t ns;
 
-    funcHandle = nvme::getFuncHandle(EC, 0);
-    nvme::init(EC, funcHandle);
+    cntlHandle = nvme::getCntlHandle(EC, 0);
+    nvme::init(EC, cntlHandle);
 
-    funcInfo.Invalidate();
-    funcInfo.RetrieveInfo(0, funcHandle);
-    if (funcInfo.GetActiveNSIdNum() &lt;= 0) {
+    cntlInfo.Invalidate();
+    cntlInfo.RetrieveInfo(0, cntlHandle);
+    if (cntlInfo.GetActiveNSIdNum() &lt;= 0) {
         c::printf("No namespace is available!\n\n");
         goto TestEnd;
     }
 
-    funcInfo.CopyTheNthNamespace(0, ns);
+    cntlInfo.CopyTheNthNamespace(0, ns);
 
-    sq1Handle = nvme::getSQHandle(EC, funcHandle, 1);
+    sq1Handle = nvme::getSQHandle(EC, cntlHandle, 1);
 
     nLBA = 0;
     nLen = 4;
-    bufHandle = nvme::ddbAlloc(EC, funcHandle, ns.GetLBADataSize_byte() * nLen);
+    bufHandle = nvme::ddbAlloc(EC, cntlHandle, ns.GetLBADataSize_byte() * nLen);
 
     do 
         cmdHandle = nvme::ioc::read(EC, sq1Handle, bufHandle, nLBA, nLen);
@@ -111,22 +111,22 @@
 
     <pre>
       <code>
-    struct funcInfo_t funcInfo;
+    struct cntlInfo_t cntlInfo;
     struct namespace_t ns;
 
-    funcHandle = nvme::getFuncHandle(EC, 0);
-    nvme::init(EC, funcHandle);
+    cntlHandle = nvme::getCntlHandle(EC, 0);
+    nvme::init(EC, cntlHandle);
 
-    funcInfo.Invalidate();
-    funcInfo.RetrieveInfo(0, funcHandle);
-    if (funcInfo.GetActiveNSIdNum() &lt;= 0) {
+    cntlInfo.Invalidate();
+    cntlInfo.RetrieveInfo(0, cntlHandle);
+    if (cntlInfo.GetActiveNSIdNum() &lt;= 0) {
         c::printf("No namespace is available!\n\n");
         goto TestEnd;
     }
 
-    funcInfo.CopyTheNthNamespace(0, ns);
+    cntlInfo.CopyTheNthNamespace(0, ns);
 
-    sq1Handle = nvme::getSQHandle(EC, funcHandle, 1);
+    sq1Handle = nvme::getSQHandle(EC, cntlHandle, 1);
 
     LBADataSize = ns.GetLBADataSize_byte();
     MetadataSize = ns.GetMetadataSize_byte();
@@ -136,14 +136,14 @@
     nLen = 4;
 
     if (LBADataSize &lt; ExtLBADataSize) {
-        bufHandle = nvme::ddbAlloc(EC, funcHandle, ExtLBADataSize * nLen);
+        bufHandle = nvme::ddbAlloc(EC, cntlHandle, ExtLBADataSize * nLen);
         for (i = 1; i &lt;= nLen; ++i) {
             nvme::ddbWriteInt32(EC, bufHandle, i * ExtLBADataSize - MetadataSize, 1, 0xABCDABCD);
             ...
         }
     }
     else
-        bufHandle = nvme::ddbAlloc(EC, funcHandle, LBADataSize * nLen);
+        bufHandle = nvme::ddbAlloc(EC, cntlHandle, LBADataSize * nLen);
 
     do 
         cmdHandle = nvme::ioc::write(EC, sq1Handle, bufHandle, nLBA, nLen);
