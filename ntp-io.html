@@ -13,7 +13,7 @@
           <h1>Peanut ntp-io</h1>
 
     <!--  <p align="right">Last updated: <span id="last-updated"></span></p>  -->
-          <p align="right">Last updated: 2023/6/24</p> 
+          <p align="right">Last updated: 2023/11/5</p> 
 
           <h3>Introduction</h3>
           <p>
@@ -23,26 +23,35 @@ package focusing on I/O tests of NVMe SSDs.
 
           <p>
 ntp-io is composed of several Peanut extension modules and scripts.
-The major extension module is pxm_nvme.pxm which is devised to maximize
-data inputs and outputs between the host and the disc based
-on PCIe/NVMe architecture. pxm_nvme.pxm extension module provides functions to:
+The major extension module is pxm_nvme.pxm which is devised to access
+NVMe SSDs based on PCIe/NVMe architecture.
+          </p>
+
+          <p>
+pxm_nvme.pxm extension module provides functions to:
 <ul type="disc">
   <li> Retrieve device information; includes </li>
     <ul type="circle">
-      <li> Number of devices (controllers) </li>
-      <li> Number of functions of a device (controller) </li>
-      <li> Number of namespaces of a function </li>
+      <li> Number of devices</li>
+      <li> Number of functions of a device </li>
+      <li> Number of namespaces </li>
       <li> Number of IO submission queues </li>
       <li> Size of an IO submission queue </li>
       <li> IO submission queue full/empty status </li>
     </ul>
 
-  <li> Allocate/free DMA data buffers dynamically </li>
+  <li> Automatic creations of IO Submission/Compltion queues </li>
+  <li> Manual creations of IO Submission/Compltion queues </li>
+  <li> Allocate/free DMA data buffers </li>
   <li> Read/write DMA data buffers </li>
   <li> Dump DMA data buffers </li>
-  <li> IOMMU support </li>
+  <li> Namespace with/without metadata </li>
+  <li> Metadata transfered separately</li>
+  <li> Metadata transfered as part of the LBA</li>
+  <li> IOMMU/Non-IOMMU support </li>
+  <li> SR-IOV support </li>
 
-  <li> Launch commands to devices </li>
+  <li> Issue commands to devices </li>
     <ul type="circle">
       <li> Admin commands </li>
       <li> IO commands </li>
@@ -69,7 +78,7 @@ on PCIe/NVMe architecture. pxm_nvme.pxm extension module provides functions to:
   <li> Command number and excution time statistics </li>
 </ul>
 Based on the functionalities provided by the extension modules, programmers
-are able to costomize versatile data I/O behaviors for testing NVMe drives.
+are able to costomize versatile data I/O behaviors for testing NVMe disks.
           </p>
 
           <h3>System requirement</h3>
