@@ -15,10 +15,52 @@
     <!--  <p align="right">Last updated: <span id="last-updated"></span></p>  -->
           <p align="right">Last updated: 2023/11/5</p> 
 
-          <h3>Operation Flow</h3>
+          <h3>Basic Flow</h3>
           <p>
+            The following flow shows the basic flow from scanning devices to 
+            release resources.<br><br>
 
+            The scan() function is used to scan NVMe devices which are set by
+            the utility sdut. <br><br>
+
+            The init() function is used to initialize the device controllers.
+            Besides controller initializations, Admin Submission/Completion queues
+            are created and IO Submission/Completion queues are also created by init()
+            function. <br><br>
+
+            The initA() function could be used to initialize the controller, too, but
+            the initA() function create Admin Submission/Completion queues only; 
+            no IO Submission/Completion queue is created by initA(). <br><br>
+
+            While there is no more access to the device, the put() function shoud be
+            called to release resources.
           </p>
+
+          <img src="flow_basic.png" />
+
+
+
+          <h3>Reinit Flow-1</h3>
+
+          <p>
+            The NVMe extension module provides function to reset the controller. Below flow
+            shows the flow to re-initialize the controller after the controller is reset but
+            the PCIe PHY link is not re-established. <br><br>
+
+            The function level reset (flReset()) and controller reset (cntlReset()) do
+            not cause the PCIe PHY link re-established.
+          </p>
+
+          <img src="flow_reinit1.png" />
+
+
+
+          <h3>Reinit Flow-2</h3>
+
+          <p>
+          </p>
+
+          <img src="flow_reinit2.png" />
 
     <script>
         var lastUpdated = new Date(document.lastModified);
