@@ -21,7 +21,7 @@
     <p>
       Before issuing Admin/NVM commands to NVMe SSDs, the script shall scans and initializes NVMe SSDs.
       A NVMe SSD is represented as a controller handle (which stands for an NVMe controller and the corresponding
-      PCI function) by the extension module.
+      PCI function) by the extension module. <br><br>
       The NVMe extension module ("pxm_nvme.pxm") provides intuitive and easy-to-use interfaces
       to scan NVMe SSDs and initialize them with little effort. Interfaces of the major functions
       and structures for disk scan and initializations are listed as the following:
@@ -267,7 +267,11 @@
       </tr>
     </table>
 
+
     <h4>Example 1</h4>
+    <p>
+        
+    </p>
 
     <pre>
       <code>
@@ -296,12 +300,20 @@ main()
 
         nvme::init(EC, cntlHandle);
     }
+
+    nvme::put();
 }
       </code>
     </pre>
 
 
     <h4>Example 2</h4>
+    <p>
+        In this example, the script calls init() function with specifying the
+        queue initialization argument (i.e. queueInitParams) and asks to create:
+        the Admin submission queue with size 64, the Admin completion queue with
+        size 64, 4 IO submission queues with size 256, etc.
+    </p>
 
     <pre>
       <code>
@@ -326,19 +338,21 @@ main()
         return;
     }
 
-    queueParams.setDef();
-    queueParams.nASQSize = 64;
-    queueParams.nACQSize = 64;
-    queueParams.nIOSQNum = 4;
-    queueParams.nIOSQSize = 256;
-    queueParams.nIOSQNumPerIOCQ = 4;
-    queueParams.nIOCQSize = 1024;
+    queueInitParams.setDef();
+    queueInitParams.nASQSize = 64;
+    queueInitParams.nACQSize = 64;
+    queueInitParams.nIOSQNum = 4;
+    queueInitParams.nIOSQSize = 256;
+    queueInitParams.nIOSQNumPerIOCQ = 4;
+    queueInitParams.nIOCQSize = 1024;
 
     for (n = 0; n &lt; nDevs; ++n) {
         cntlHandle = nvme::getCntlHandle(EC, n);
 
-        nvme::init(EC, cntlHandle, queueParams);
+        nvme::init(EC, cntlHandle, queueInitParams);
     }
+
+    nvme::put();
 }
       </code>
     </pre>
@@ -378,6 +392,8 @@ main()
 
         nvme::initA(EC, cntlHandle);
     }
+
+    nvme::put();
 }
       </code>
     </pre>

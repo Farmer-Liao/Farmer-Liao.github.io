@@ -12,6 +12,8 @@
         <div id="content">
           <h1>Peanut ntp-io</h1>
 
+          <h2>Operation Flows</h2>
+
     <!--  <p align="right">Last updated: <span id="last-updated"></span></p>  -->
           <p align="right">Last updated: 2023/11/5</p> 
 
@@ -32,7 +34,7 @@
             the initA() function create Admin Submission/Completion queues only; 
             no IO Submission/Completion queue is created by initA(). <br><br>
 
-            While there is no more access to the device, the put() function shoud be
+            While there is no more wanted access to the device, the put() function shoud be
             called to release resources.
           </p>
 
@@ -44,8 +46,8 @@
 
           <p>
             The NVMe extension module provides function to reset the controller. Below flow
-            shows the flow to re-initialize the controller after the controller is reset but
-            the PCIe PHY link is not re-established. <br><br>
+            shows how to to re-initialize the controller after the controller is reset, which
+            does not cause PCIe PHY link re-established. <br><br>
 
             The function level reset (flReset()) and controller reset (cntlReset()) do
             not cause the PCIe PHY link re-established.
@@ -58,6 +60,11 @@
           <h3>Reinit Flow-2</h3>
 
           <p>
+            This flow is to re-initialize the controller after a power cycle or a NVM subsystem
+            reset. Both power cycle and NVM subsystem reset make the PCIe PHY link re-established.
+            With PHY link re-established, the script should call rescan() function first to make
+            sure the PHY link establishment and next calls init() or initA() function to
+            re-initialize the controller.
           </p>
 
           <img src="flow_reinit2.png" />
