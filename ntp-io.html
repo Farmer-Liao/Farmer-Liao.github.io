@@ -88,20 +88,14 @@ are able to costomize versatile data I/O behaviors for testing NVMe disks.
           <h3>System Requirements</h3>
 <ul type="disc">
   <li> Ubuntu 20.04 </li>
-  <li> 2MB-size Huge pages </li>
+  <li> 2MB-size huge pages</li>
 </ul>
 
           <h3>Quick Start</h3>
           <p>
-          </p>
-          <p>
-            After downloading the package, no installation is required. <br><br>
-
-            Say that the package root directory (i.e. ntp-io/) is located at
-            the the user's home directory.<br><br> 
-
-After the download, execute the following commands to execute the first script.
-
+            After downloading the package, no installation is required, but
+            execute the following commands to decompress the download and
+            run the Peanut hello.pnt script.
           </p>
 
           <pre>
@@ -109,6 +103,54 @@ After the download, execute the following commands to execute the first script.
 ~ $ tar -xvzf ntp-io.tar.gz
 ~ $ cd ntp-io
 ~/ntp-io $ ./pni hello.pnt World
+            </code>
+          </pre>
+
+
+          <p>
+            Next check hugepage configuration by the following command.
+          </p>
+
+          <pre>
+            <code>
+~ $ grep Huge /proc/meminfo
+            </code>
+          </pre>
+
+          <p>
+            With huge pages configured properly, messages like the following would
+            be displayed.
+          </p>
+
+          <pre>
+            <code>
+AnonHugePages:         0 kB
+ShmemHugePages:        0 kB
+FileHugePages:         0 kB
+HugePages_Total:    1024
+HugePages_Free:     1024
+            </code>
+          </pre>
+
+          <p>
+            If there is no huge-page information displayed, run the following command to configure huge pages.
+          </p>
+
+          <pre>
+            <code>
+~ $ sysctl -w vm.nr_hugepages=1024
+            </code>
+          </pre>
+
+
+          <p>
+            To ensure that the huge pages are configured after the system starts, add the
+            following entry to /etc/sysctl.conf file.
+          </p>
+
+          <pre>
+            <code>
+vm.nr_hugepages=1024
             </code>
           </pre>
 
@@ -132,7 +174,7 @@ After the download, execute the following commands to execute the first script.
     <td>The directory where the used extension modules are.</td>
   </tr>
   <tr>
-    <td>scripts/</td>
+    <td>main/</td>
     <td>The directory where the testing scripts are.</td>
   </tr>
   <tr>
@@ -145,7 +187,7 @@ After the download, execute the following commands to execute the first script.
   </tr>
   <tr>
     <td>sdut</td>
-    <td>The utility used to set up DUTs and dump DUTs information.</td>
+    <td>The utility used to set up DUTs, revert DUTs, and list DUTs information.</td>
   </tr>
 </table>
 
