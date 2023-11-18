@@ -10,27 +10,27 @@
 <body>
 
         <div id="content">
-          <h1>Peanut ntp-io</h1>
+          <h1>NVMe Ultimate Tester</h1>
 
           <h2>Introduction</h2>
 
     <!--  <p align="right">Last updated: <span id="last-updated"></span></p>  -->
           <p align="right">Last updated: 2023/11/5</p> 
 
+
           <h3>Features</h3>
           <p>
-'ntp' is short for Nvme Test Package, and 'Peanut ntp-io' is a testing-purpose
-package focusing on I/O tests of NVMe SSDs.
+NVMe Ultimate Tester (NUT) is a testing-purpose software package for tailoring tests on NVMe SSDs.
           </p>
 
           <p>
-ntp-io is composed of several Peanut extension modules and scripts.
+NUT is composed of several Peanut extension modules and scripts.
 The major extension module is pxm_nvme.pxm which is devised to access
 NVMe SSDs based on PCIe/NVMe architecture.
           </p>
 
           <p>
-pxm_nvme.pxm extension module provides functions to:
+The pxm_nvme.pxm extension module provides functions to:
 <ul type="disc">
   <li> Retrieve device information; includes </li>
     <ul type="circle">
@@ -52,7 +52,7 @@ pxm_nvme.pxm extension module provides functions to:
   <li> Namespace with/without metadata </li>
   <li> Metadata transfered separately</li>
   <li> Metadata transfered as part of the LBA</li>
-  <li> IOMMU/Non-IOMMU support </li>
+  <li> Support IOMMU/Non-IOMMU </li>
   <li> Suppot SR-IOV virtal functions </li>
 
   <li> Issue commands to devices </li>
@@ -82,30 +82,43 @@ pxm_nvme.pxm extension module provides functions to:
   <li> Command number and excution time statistics </li>
 </ul>
 Based on the functionalities provided by the extension modules, programmers
-are able to costomize versatile data I/O behaviors for testing NVMe disks.
+are able to costomize versatile tests on NVMe disks.
           </p>
+          <p> <br> </p>
+
+
+          <h3>Excellent Efficiency</h3>
+          <p>
+The Peanut extension module pxm_nvme.pxm issues commands to the SSD efficiently.
+In a random 4KB-read test, we see that an over 800K IOPS performance is seen while
+the the script only invokes 1 IO Submission queue and limits number of outstanding
+commands as 16.
+          </p>
+          <p> <br> </p>
+
 
           <h3>System Requirements</h3>
 <ul type="disc">
   <li> Ubuntu 20.04 </li>
   <li> 2MB-size huge pages</li>
 </ul>
+          <p> <br> </p>
+
 
           <h3>Quick Start</h3>
           <p>
-            After downloading the package, no installation is required, but
-            execute the following commands to decompress the download and
+            After receiving the package, no installation is required, but
+            execute the following commands to decompress the nut.tar.gz file and
             run the Peanut hello.pnt script.
           </p>
 
           <pre>
             <code>
-~ $ tar -xvzf ntp-io.tar.gz
-~ $ cd ntp-io
-~/ntp-io $ ./pni hello.pnt World
+~ $ tar -xvzf nut.tar.gz
+~ $ cd nut
+~/nut $ pni hello.pnt World
             </code>
           </pre>
-
 
           <p>
             Next check hugepage configuration by the following command.
@@ -119,7 +132,8 @@ are able to costomize versatile data I/O behaviors for testing NVMe disks.
 
           <p>
             With huge pages configured properly, messages like the following would
-            be displayed.
+            be displayed. If no hugepage is configured, refer to <a href="#ConfigHugePages">Configure Huge Pages</a>
+            for the setting.
           </p>
 
           <pre>
@@ -132,25 +146,29 @@ HugePages_Free:     1024
             </code>
           </pre>
 
+
           <p>
-            If there is no huge-page information displayed, run the following command to configure huge pages.
+            Before running the script, the NVMe SSDs to be tested should be set. Like the following
+            as an example, /dev/nvme0 is set as the device under test (DUT). Note that more DUTs can be set.
           </p>
 
           <pre>
             <code>
-~ $ sysctl -w vm.nr_hugepages=1024
+~/nut $ sudo sdut --vfio-noiommu nvme0             or
+~/nut $ sudo sdut --vfio-iommu   nvme0 
             </code>
           </pre>
 
 
+
           <p>
-            To ensure that the huge pages are configured after the system starts, add the
-            following entry to /etc/sysctl.conf file.
+            Now change the working directory to main/ and invoke pni to run the script like the following.
           </p>
 
           <pre>
             <code>
-vm.nr_hugepages=1024
+~/nut $ cd main
+~/nut/main $ sudo pni u00_identify.pnt
             </code>
           </pre>
 
@@ -190,40 +208,34 @@ vm.nr_hugepages=1024
     <td>The utility used to set up DUTs, revert DUTs, and list DUTs information.</td>
   </tr>
 </table>
+          <p> <br> </p>
 
 
-          <h3>Run IO test scripts</h3>
-            <p>
-Before running the testing scripts, the DUTs should be set up.
-            </p>
 
-            <p>
-Say there are 3 nvme controllers on the system and the device
-nodes are /dev/nvme0, /dev/nvme1, and /dev/nvme2. If /dev/nvme0 and /dev/nvme2
-will be tested, run the followings to set up the DUTs.
-            </p>
+          <div id="ConfigHugePages">
+          <h3>Configure Huge Pages</h3>
+          </div>
+          <p>
+            If there is no huge-page configured, run the following command to configure huge pages.
+          </p>
 
           <pre>
             <code>
-~ $ cd ntp-io
-~/ntp-io $ sudo ./sdut nvme0 nvme2
+~ $ sysctl -w vm.nr_hugepages=1024
             </code>
           </pre>
 
-            <p>
-After the DUT(s) is set and it is going to run the "1001_seqRdSpeed_1t1q.pnt" script in
-the ntp-io/scripts directory, execute the following command.
-            </p>
+
+          <p>
+            To ensure that the huge pages are configured after the system starts, add the
+            following entry to /etc/sysctl.conf file.
+          </p>
 
           <pre>
             <code>
-~/ntp-io $ cd scripts
-~/ntp-io/scripts $ sudo ../pni 1001_seqRdSpeed_1t1q.pnt
+vm.nr_hugepages=1024
             </code>
           </pre>
-
-And note that the real number of DUTs be tested by a script depends on the
-script behaviors but not the number of DUTs set by the sdut utility.
 
     <script>
         var lastUpdated = new Date(document.lastModified);

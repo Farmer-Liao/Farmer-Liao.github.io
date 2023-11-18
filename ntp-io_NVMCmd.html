@@ -10,7 +10,7 @@
 <body>
 
   <div id="content">
-    <h1>Peanut ntp-io</h1>
+    <h1>NVMe Ultimate Tester</h1>
 
     <h2>Issue NVM Commands</h2>
 
@@ -21,6 +21,17 @@
     <p>
         The Peanut functions which are devised to issue NVM commands are called with nvme::ioc namespace
         resolution.
+    </p>
+
+
+    <h4>Metadata</h4>
+    <p>
+        Besides LBA data, some NVM commands access metadata, too. If the LBA metadata size is nonzero,
+        the NVMe specification defines that metadata could be transfered as part of LBA or be transfered
+        separately. <br><br>
+
+        If the metadata size is nonzero, the programmer should note that the buffer size allocated for 1
+        LBA should count in metadata size or the script should allocate a dedicated buffer for LBA metadata.
     </p>
 
 
@@ -43,15 +54,15 @@
 
     <h4>pspp()</h4>
     <p>
-        The pspp() is used to poll the status of the command issued.
+        The pspp() function is used to poll the status of the command issued.
     </p>
 
 
     <h4>Example 1</h4>
 
     <p>
-        This example shows how to issue a read command to the NVMe SSD. This example
-        assumes that the namespace does not support metadata.<br><br>
+        This example shows how to issue a read command to the NVMe SSD. <b>This example
+        assumes that the namespace does not support metadata</b>.<br><br>
         The 'struct cntlInfo_t' and 'struct namespace_t' are structures implemented
         in script to ease retrieve controller (NVMe controller, or PCI function) information
         and information of NVMe namespaces.
@@ -78,10 +89,10 @@
 
     nLBA = 0;
     nLen = 4;
-    bufHandle = nvme::ddbAlloc(EC, cntlHandle, ns.GetLBADataSize_byte() * nLen);
+    buf_data = nvme::ddbAlloc(EC, cntlHandle, ns.GetLBADataSize_byte() * nLen);
 
     do 
-        cmdHandle = nvme::ioc::read(EC, sq1Handle, bufHandle, nLBA, nLen);
+        cmdHandle = nvme::ioc::read(EC, sq1Handle, buf_data, nLBA, nLen);
     while (cmdHandle == 0);
 
     while (1) {
@@ -91,7 +102,7 @@
     }
 
     if (stsVal &#38; nvme::cmdCplFlag) {
-        nvme::ddbDump(EC, bufHandle, 0, 0);
+        nvme::ddbDump(EC, buf_data, 0, 0);
     }
     else {
         ...
@@ -104,9 +115,9 @@
 
     <p>
         This example shows how to issue a write command to the NVMe SSD whose
-        namespace supports metadata and is formatted to transmit metadata immediately
-        after each LBA data.<br><br>
-        The value 0xABCDABCD is filled into the first 4 bytes of the metadata of each LBA.
+        namespace <b>may or may not support metadata. </b><br><br>
+        If the namespace supports metadata, the value 0xABCDABCD is filled into the first 4 bytes
+        of the metadata of each LBA.
     </p>
 
     <pre>
@@ -135,18 +146,20 @@
     nLBA = 0;
     nLen = 4;
 
-    if (LBADataSize &lt; ExtLBADataSize) {
-        bufHandle = nvme::ddbAlloc(EC, cntlHandle, ExtLBADataSize * nLen);
-        for (i = 1; i &lt;= nLen; ++i) {
-            nvme::ddbWriteInt32(EC, bufHandle, i * ExtLBADataSize - MetadataSize, 1, 0xABCDABCD);
-            ...
-        }
-    }
-    else
-        bufHandle = nvme::ddbAlloc(EC, cntlHandle, LBADataSize * nLen);
+    buf_data = nvme::ddbAlloc(EC, cntlHandle, ExtLBADataSize * nLen);
+    buf_meta = 0;
+    if (MetadataSize &gt; 0 &amp;&amp; LBADataSize == ExtLBADataSize)
+        buf_meta = nvme::ddbAlloc(EC, cntlHandle, 4096);
+
+    if (buf_meta != 0)
+        for (i = 0; i &lt; nLen; ++i)
+            nvme::ddbWriteInt32(EC, buf_meta, i * MetadataSize, 1, 0xABCDABCD);
+    else if (LBADataSize &lt; ExtLBADataSize)
+        for (i = 1; i &lt;= nLen; ++i)
+            nvme::ddbWriteInt32(EC, buf_data, i * ExtLBADataSize - MetadataSize, 1, 0xABCDABCD);
 
     do 
-        cmdHandle = nvme::ioc::write(EC, sq1Handle, bufHandle, nLBA, nLen);
+        cmdHandle = nvme::ioc::write(EC, sq1Handle, buf_data, nLBA, nLen, buf_meta);
     while (cmdHandle == 0);
 
     while (1) {

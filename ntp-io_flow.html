@@ -10,7 +10,7 @@
 <body>
 
         <div id="content">
-          <h1>Peanut ntp-io</h1>
+          <h1>NVMe Ultimate Tester</h1>
 
           <h2>Operation Flows</h2>
 
@@ -22,7 +22,7 @@
             The following flow shows the basic flow from scanning devices to 
             release resources.<br><br>
 
-            The scan() function is used to scan NVMe devices which are set by
+            The scan() function is used to scan DUT devices which are set by
             the utility sdut. <br><br>
 
             The init() function is used to initialize the device controllers.
@@ -30,7 +30,7 @@
             are created and IO Submission/Completion queues are also created by init()
             function. <br><br>
 
-            The initA() function could be used to initialize the controller, too, but
+            The initA() function could be used to initialize the controllers, too, but
             the initA() function create Admin Submission/Completion queues only; 
             no IO Submission/Completion queue is created by initA(). <br><br>
 
