@@ -15,7 +15,7 @@
           <h2>Introduction</h2>
 
     <!--  <p align="right">Last updated: <span id="last-updated"></span></p>  -->
-          <p align="right">Last updated: 2023/11/5</p> 
+          <p align="right">Last updated: 2023/11/19</p> 
 
 
           <h3>Features</h3>
@@ -26,7 +26,7 @@ NVMe Ultimate Tester (NUT) is a testing-purpose software package for tailoring t
           <p>
 NUT is composed of several Peanut extension modules and scripts.
 The major extension module is pxm_nvme.pxm which is devised to access
-NVMe SSDs based on PCIe/NVMe architecture.
+NVMe SSDs in user space based on PCIe/NVMe architecture.
           </p>
 
           <p>
@@ -87,15 +87,38 @@ are able to costomize versatile tests on NVMe disks.
           <p> <br> </p>
 
 
-          <h3>Excellent Efficiency</h3>
+          <h3>Outstanding Efficiency</h3>
           <p>
-The Peanut extension module pxm_nvme.pxm issues commands to the SSD efficiently.
-In a random 4KB-read test, we see that an over 800K IOPS performance is seen while
-the the script only invokes 1 IO Submission queue and limits number of outstanding
-commands as 16. <br><br>
+The Peanut extension module pxm_nvme.pxm supports functions to issue commands to
+the SSD in a high efficiency.
+In a random 4KB-read test, we see that a performance over 800K IOPS is achieved where
+the the script only invokes 1 IO Submission queue and limits the maxmum number of 
+commands issued as 16. <br> <br>
 
-Please note that all the commands are issued in the script level.
+Below figures show random 4KB-read performances in conditions with 
+setting the number of IO Submission queues and the maxmum number of issued commands
+in each queue. 
           </p>
+
+          <figure>
+            <figcaption> </figcaption>
+            <img src="perf_IOSQ1_IOPS_30s.png" > <br>
+          </figure>
+
+          <figure>
+            <figcaption> </figcaption>
+            <img src="perf_IOSQ1_IOPS_avg.png" > <br>
+          </figure>
+
+          <figure>
+            <figcaption> </figcaption>
+            <img src="perf_IOSQ2_IOPS_30s.png" > <br>
+          </figure>
+
+          <figure>
+            <figcaption> </figcaption>
+            <img src="perf_IOSQ2_IOPS_avg.png" >
+          </figure>
           <p> <br> </p>
 
 
