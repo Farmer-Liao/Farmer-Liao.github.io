@@ -756,7 +756,7 @@ precondition(cntlh)
         return;
     }
 
-    buf = nvme::ddbAlloc(EC, cntlh, 32768);
+    buf = nvme::ddbAlloc(EC, cntlh, nvme::PRP, 32768);
     nvme::ddbFillPatRand(EC, buf);
     for (slot = 0; slot < MAX_Q_DEPTH; ++slot)
         cmdHandles[slot] = 0;
@@ -840,7 +840,7 @@ randReadTask(cntlh)
         return;
     }
 
-    buf = nvme::ddbAlloc(EC, cntlh, 4096);
+    buf = nvme::ddbAlloc(EC, cntlh, nvme::PRP, 4096);
     for (slot = 0; slot < MAX_Q_DEPTH; ++slot)
         cmdHandles[slot] = 0;
 
