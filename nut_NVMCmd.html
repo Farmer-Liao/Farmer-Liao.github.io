@@ -14,7 +14,7 @@
 
     <h2>Issue NVM Commands</h2>
 
-    <p align="right">Last updated: 2023/11/19</p> 
+    <p align="right">Last updated: 2023/12/5</p> 
 
 
     <h4>Namespace nvme::ioc</h4>
@@ -30,8 +30,9 @@
         the NVMe specification defines that metadata could be transfered as part of LBA or be transfered
         separately. <br><br>
 
-        If the metadata size is nonzero, the programmer should note that the buffer size allocated for 1
-        LBA should count in metadata size or the script should allocate a dedicated buffer for LBA metadata.
+        If the metadata size is nonzero, the buffer size allocated for 1 LBA should count in metadata size
+        or the script should allocate a dedicated buffer for LBA metadata depending on how the metadata
+        is transfered.
     </p>
 
 
@@ -64,8 +65,8 @@
         This example shows how to issue a read command to the NVMe SSD. <b>This example
         assumes that the namespace does not support metadata</b>.<br><br>
         The 'struct cntlInfo_t' and 'struct namespace_t' are structures implemented
-        in script to ease retrieve controller (NVMe controller, or PCI function) information
-        and information of NVMe namespaces.
+        in script for retrieving controller (NVMe controller) information
+        and information of NVMe namespaces with ease.
     </p>
 
     <pre>
@@ -78,7 +79,8 @@
 
     cntlInfo.Invalidate();
     cntlInfo.RetrieveInfo(0, cntlHandle);
-    if (cntlInfo.GetActiveNSIdNum() &lt;= 0) {
+    if (cntlInfo.GetActiveNSIdNum() &lt;= 0)
+    {
         c::printf("No namespace is available!\n\n");
         goto TestEnd;
     }
@@ -89,22 +91,25 @@
 
     nLBA = 0;
     nLen = 4;
-    buf_data = nvme::ddbAlloc(EC, cntlHandle, ns.GetLBADataSize_byte() * nLen);
+    buf_data = nvme::ddbAlloc(EC, cntlHandle, nvme::PRP, ns.GetLBADataSize_byte() * nLen);
 
     do 
         cmdHandle = nvme::ioc::read(EC, sq1Handle, buf_data, nLBA, nLen);
     while (cmdHandle == 0);
 
-    while (1) {
+    while (1)
+    {
         stsVal = nvme::pspp(cmdHandle);
         if (stsVal)
             break;
     }
 
-    if (stsVal &#38; nvme::cmdCplFlag) {
+    if (stsVal &#38; nvme::cmdCplFlag)
+    {
         nvme::ddbDump(EC, buf_data, 0, 0);
     }
-    else {
+    else
+    {
         ...
     }
       </code>
@@ -146,10 +151,10 @@
     nLBA = 0;
     nLen = 4;
 
-    buf_data = nvme::ddbAlloc(EC, cntlHandle, ExtLBADataSize * nLen);
+    buf_data = nvme::ddbAlloc(EC, cntlHandle, nvme::PRP, ExtLBADataSize * nLen);
     buf_meta = 0;
     if (MetadataSize &gt; 0 &amp;&amp; LBADataSize == ExtLBADataSize)
-        buf_meta = nvme::ddbAlloc(EC, cntlHandle, 4096);
+        buf_meta = nvme::ddbAlloc(EC, cntlHandle, nvme::PRP, 4096);
 
     if (buf_meta != 0)
         for (i = 0; i &lt; nLen; ++i)
@@ -162,13 +167,569 @@
         cmdHandle = nvme::ioc::write(EC, sq1Handle, buf_data, nLBA, nLen, buf_meta);
     while (cmdHandle == 0);
 
-    while (1) {
+    while (1)
+    {
         stsVal = nvme::pspp(cmdHandle);
         if (stsVal)
             break;
     }
       </code>
     </pre>
+
+
+
+    <h4>Example 3: Multitasking and Multiple Outstanding Commands</h4>
+
+    <p>
+        This example invokes 3 tasks for one device: task_write(), task_read(), and task_compare().
+
+        Each device is represented as an index, devIdx, to the array tests_g[MAX_DEVS].<br><br>
+
+        Information of the multiple outstanding commands is stored in tests_g[devIdx].iodatum[]
+        array.<br><br>
+
+        Each task repeatedly checks the states of iodatum[], selects 1 of 3 IO submission queues
+        randomly, and put NVM write/read/compare commands into the selected queue respectively. <br><br>
+
+        The task_write() task determines the IO location and length, determine the write contents, write
+        the command while one tests_g[devIdx].iodatum[] is in STATE_TOWRITE state; the task_write()
+        also poll the status of a write command it issues. <br><br>
+
+        task_read() and task_compare() have similiar behaviors like task_write() except the commands
+        they send. The task_read() also puts random data into the buffer before the read command
+        is sent. If the SSD processes the read command without feeding the buffer with proper data,
+        compare command may result in a failure. <br><br>
+
+        With any error detected, the script prompt the error and stops testing.<br>
+        Without errors, the script keeps running.
+    </p>
+
+
+    <pre>
+      <code>
+const MAX_DEVS = 8;
+const SEND_COMMAND_TIMEOUT = 10;    // in seconds
+
+const STATE_TOWRITE = 1;
+const STATE_WAITWRITE = 2;
+const STATE_TOREAD = 3;
+const STATE_WAITREAD = 4;
+const STATE_TOCOMP = 5;
+const STATE_WAITCOMP = 6;
+
+struct iodata_t
+{
+    var state;
+    var lba;
+    var len;
+    var buf_data;
+    var buf_meta;
+    var curCmdHandle;
+};
+
+struct testData_t
+{
+    struct cntlInfo_t cntl;
+    var mutex;      // protect logfd
+    var logfd;
+
+    var qHandles[3];
+    var nMaxOut;
+    var nMaxIOLen;
+    struct iodata_t iodatum[MAX_OUTSTANDINGS];
+    var testStopFlag;
+
+    var writeCount;
+    var writeCplCount;
+    var readCount;
+    var readCplCount;
+    var compCount;
+    var compCplCount;
+};
+
+struct testData_t tests_g[MAX_DEVS];
+var testStopFlag_g = 0;
+
+showStatusErrors(logFile, stsVal)
+{
+    var Status, SCTDescp, SCDescp;
+
+    Status = (stsVal & nvme::cmdStsMask) >> nvme::cmdStsLowBit;
+    if (Status || (stsVal & nvme::cmdToFlag))
+    {
+        c::util::logPrintf(logFile, "stsVal = %X", stsVal);
+
+        if (Status)
+        {
+            c::util::logPrintf(logFile, ", Status = %X", Status);
+            GetNVMeCmdCplStatusDescription(Status, SCTDescp, SCDescp);
+            c::util::logPrintf(logFile, ", SCT: %s, SC: %s", SCTDescp, SCDescp);
+        }
+
+        if (stsVal & nvme::cmdToFlag)
+            c::util::logPrintf(logFile, ", Comand timeout");
+
+        c::util::logPrintf(logFile, "\n\n");
+    }
+}
+
+randomizeData(dataBuf, metaBuf)
+{
+    var EC, sz;
+
+    sz = nvme::ddbSize(EC, dataBuf);
+    nvme::ddbWriteInt8(EC, dataBuf, c::rand() % sz, c::rand() & 0xFF);
+
+    if (metaBuf)
+    {
+        sz = nvme::ddbSize(EC, metaBuf);
+        nvme::ddbWriteInt8(EC, metaBuf, c::rand() % sz, c::rand() & 0xFF);
+    }
+}
+
+task_write(devIdx)
+{
+    var EC;
+    struct namespace_t ns;
+    var nTotalLBANum;
+    var nMaxOut;
+    var nMaxIOLen;
+    var ii; // ii = io index
+    var qHandle;
+    var lba, len, stime, ctime;
+    var stsVal;
+
+    tests_g[devIdx].cntl.CopyTheNthNamespace(0, ns);
+    nTotalLBANum = ns.GetCapacity_lba();
+    nMaxOut = tests_g[devIdx].nMaxOut;
+    nMaxIOLen = tests_g[devIdx].nMaxIOLen;
+    lba = 0;
+
+    ii = 0;
+    while (!testStopFlag_g && !tests_g[devIdx].testStopFlag)
+    {
+        if (tests_g[devIdx].iodatum[ii].state == STATE_TOWRITE)
+        {
+            len = 1 + c::rand() % nMaxIOLen;
+            if (lba + len >= nTotalLBANum)
+                lba = 0;
+            tests_g[devIdx].iodatum[ii].lba = lba;
+            tests_g[devIdx].iodatum[ii].len = len;
+
+            // write something to the data buffer
+            randomizeData(tests_g[devIdx].iodatum[ii].buf_data, tests_g[devIdx].iodatum[ii].buf_meta);
+
+            //
+            // randomly select one IOSQ and send one write command to it
+            //
+            stime = ctime = c::time();
+            do
+            {
+                qHandle = tests_g[devIdx].qHandles[c::rand() % 3];
+
+                tests_g[devIdx].iodatum[ii].curCmdHandle =
+                                nvme::ioc::write(EC,
+                                                 qHandle,
+                                                 tests_g[devIdx].iodatum[ii].buf_data,
+                                                 lba,
+                                                 len,
+                                                 tests_g[devIdx].iodatum[ii].buf_meta);
+                ctime = c::time();
+            } while (tests_g[devIdx].iodatum[ii].curCmdHandle == 0 && ctime - stime < SEND_COMMAND_TIMEOUT);
+
+            if (tests_g[devIdx].iodatum[ii].curCmdHandle)
+            {
+                tests_g[devIdx].writeCount++;
+
+                lba += len;
+
+                tests_g[devIdx].iodatum[ii].state = STATE_WAITWRITE;
+
+                if (++ii == nMaxOut)
+                    ii = 0;
+
+                continue;
+            }
+
+            mutex_lock(tests_g[devIdx].mutex);
+            c::util::logPrintf(tests_g[devIdx].logfd, "Error: fail to issue a write command within %d secs\n", SEND_COMMAND_TIMEOUT);
+            mutex_unlock(tests_g[devIdx].mutex);
+
+            tests_g[devIdx].testStopFlag = 1;  // inform other tasks to stop
+            break;
+        }
+
+        if (tests_g[devIdx].iodatum[ii].state == STATE_WAITWRITE)
+        {
+            stsVal = nvme::pspp(tests_g[devIdx].iodatum[ii].curCmdHandle);
+            if (stsVal == 0)
+            {
+                if (++ii == nMaxOut)
+                    ii = 0;
+
+                continue;
+            }
+            else if (stsVal == nvme::cmdCplFlag)
+            {
+                tests_g[devIdx].iodatum[ii].curCmdHandle = 0;
+                tests_g[devIdx].writeCplCount++;
+
+                tests_g[devIdx].iodatum[ii].state = STATE_TOREAD;
+
+                if (++ii == nMaxOut)
+                    ii = 0;
+
+                continue;
+            }
+
+            mutex_lock(tests_g[devIdx].mutex);
+            c::util::logPrintf(tests_g[devIdx].logfd, "wf %X %X\n", tests_g[devIdx].iodatum[ii].lba, tests_g[devIdx].iodatum[ii].len);
+            c::util::logPrintf(tests_g[devIdx].logfd, "Error: a write command fail\n");
+            showStatusErrors(tests_g[devIdx].logfd, stsVal);
+            mutex_unlock(tests_g[devIdx].mutex);
+
+            tests_g[devIdx].testStopFlag = 1;  // inform other tasks to stop
+            break;
+        }
+
+        if (++ii == nMaxOut)
+            ii = 0;
+    }
+}
+
+task_read(devIdx)
+{
+    var EC;
+    var nMaxOut;
+    var ii; // ii = io index
+    var qHandle;
+    var stime, ctime;
+    var stsVal;
+
+    nMaxOut = tests_g[devIdx].nMaxOut;
+
+    ii = 0;
+    while (!testStopFlag_g && !tests_g[devIdx].testStopFlag)
+    {
+        if (tests_g[devIdx].iodatum[ii].state == STATE_TOREAD)
+        {
+            // write something to corrupt data buffer; after read, the data is recovered
+            randomizeData(tests_g[devIdx].iodatum[ii].buf_data, tests_g[devIdx].iodatum[ii].buf_meta);
+
+            //
+            // randomly select one IOSQ and send one read command to it
+            //
+            stime = ctime = c::time();
+            do
+            {
+                qHandle = tests_g[devIdx].qHandles[c::rand() % 3];
+
+                tests_g[devIdx].iodatum[ii].curCmdHandle =
+                                nvme::ioc::read(EC,
+                                                 qHandle,
+                                                 tests_g[devIdx].iodatum[ii].buf_data,
+                                                 tests_g[devIdx].iodatum[ii].lba,
+                                                 tests_g[devIdx].iodatum[ii].len,
+                                                 tests_g[devIdx].iodatum[ii].buf_meta);
+                ctime = c::time();
+            } while (tests_g[devIdx].iodatum[ii].curCmdHandle == 0 && ctime - stime < SEND_COMMAND_TIMEOUT);
+
+            if (tests_g[devIdx].iodatum[ii].curCmdHandle)
+            {
+                tests_g[devIdx].readCount++;
+
+                tests_g[devIdx].iodatum[ii].state = STATE_WAITREAD;
+
+                if (++ii == nMaxOut)
+                    ii = 0;
+
+                continue;
+            }
+
+            mutex_lock(tests_g[devIdx].mutex);
+            c::util::logPrintf(tests_g[devIdx].logfd, "Error: fail to issue a read command within %d secs\n", SEND_COMMAND_TIMEOUT);
+            mutex_unlock(tests_g[devIdx].mutex);
+
+            tests_g[devIdx].testStopFlag = 1;  // inform other tasks to stop
+            break;
+        }
+
+        if (tests_g[devIdx].iodatum[ii].state == STATE_WAITREAD)
+        {
+            stsVal = nvme::pspp(tests_g[devIdx].iodatum[ii].curCmdHandle);
+            if (stsVal == 0)
+            {
+                if (++ii == nMaxOut)
+                    ii = 0;
+
+                continue;
+            }
+            else if (stsVal == nvme::cmdCplFlag)
+            {
+                tests_g[devIdx].iodatum[ii].curCmdHandle = 0;
+                tests_g[devIdx].readCplCount++;
+
+                tests_g[devIdx].iodatum[ii].state = STATE_TOCOMP;
+
+                if (++ii == nMaxOut)
+                    ii = 0;
+
+                continue;
+            }
+
+            mutex_lock(tests_g[devIdx].mutex);
+            c::util::logPrintf(tests_g[devIdx].logfd, "rf %X %X\n", tests_g[devIdx].iodatum[ii].lba, tests_g[devIdx].iodatum[ii].len);
+            c::util::logPrintf(tests_g[devIdx].logfd, "Error: a read command fail\n");
+            showStatusErrors(tests_g[devIdx].logfd, stsVal);
+            mutex_unlock(tests_g[devIdx].mutex);
+
+            tests_g[devIdx].testStopFlag = 1;  // inform other tasks to stop
+            break;
+        }
+
+        if (++ii == nMaxOut)
+            ii = 0;
+    }
+}
+
+task_compare(devIdx)
+{
+    var EC;
+    var nMaxOut;
+    var ii; // ii = io index
+    var qHandle;
+    var stime, ctime;
+    var stsVal;
+    
+    nMaxOut = tests_g[devIdx].nMaxOut;
+
+    ii = 0;
+    while (!testStopFlag_g && !tests_g[devIdx].testStopFlag)
+    {
+        if (tests_g[devIdx].iodatum[ii].state == STATE_TOCOMP)
+        {
+            //
+            // randomly select one IOSQ and send one compare command to it
+            //
+            stime = ctime = c::time();
+            do
+            {
+                qHandle = tests_g[devIdx].qHandles[c::rand() % 3];
+
+                tests_g[devIdx].iodatum[ii].curCmdHandle =
+                                nvme::ioc::compare(EC,
+                                                 qHandle,
+                                                 tests_g[devIdx].iodatum[ii].buf_data,
+                                                 tests_g[devIdx].iodatum[ii].lba,
+                                                 tests_g[devIdx].iodatum[ii].len,
+                                                 tests_g[devIdx].iodatum[ii].buf_meta);
+                ctime = c::time();
+            } while (tests_g[devIdx].iodatum[ii].curCmdHandle == 0 && ctime - stime < SEND_COMMAND_TIMEOUT);
+
+            if (tests_g[devIdx].iodatum[ii].curCmdHandle)
+            {
+                tests_g[devIdx].compCount++;
+
+                tests_g[devIdx].iodatum[ii].state = STATE_WAITCOMP;
+
+                if (++ii == nMaxOut)
+                    ii = 0;
+
+                continue;
+            }
+
+            mutex_lock(tests_g[devIdx].mutex);
+            c::util::logPrintf(tests_g[devIdx].logfd, "Error: fail to issue a compare command within %d secs\n", SEND_COMMAND_TIMEOUT);
+            mutex_unlock(tests_g[devIdx].mutex);
+
+            tests_g[devIdx].testStopFlag = 1;  // inform other tasks to stop
+            break;
+        }
+
+        if (tests_g[devIdx].iodatum[ii].state == STATE_WAITCOMP)
+        {
+            stsVal = nvme::pspp(tests_g[devIdx].iodatum[ii].curCmdHandle);
+            if (stsVal == 0)
+            {
+                if (++ii == nMaxOut)
+                    ii = 0;
+
+                continue;
+            }
+            else if (stsVal == nvme::cmdCplFlag)
+            {
+                tests_g[devIdx].iodatum[ii].curCmdHandle = 0;
+                tests_g[devIdx].compCplCount++;
+
+                tests_g[devIdx].iodatum[ii].state = STATE_TOWRITE;
+
+                if (++ii == nMaxOut)
+                    ii = 0;
+
+                continue;
+            }
+
+            mutex_lock(tests_g[devIdx].mutex);
+            c::util::logPrintf(tests_g[devIdx].logfd, "cf %X %X\n", tests_g[devIdx].iodatum[ii].lba, tests_g[devIdx].iodatum[ii].len);
+            c::util::logPrintf(tests_g[devIdx].logfd, "Error: a compare command fail\n");
+            showStatusErrors(tests_g[devIdx].logfd, stsVal);
+            nvme::dumpHandleInfo(EC, tests_g[devIdx].logfd, "data buffer", tests_g[devIdx].iodatum[ii].buf_data);
+            if (tests_g[devIdx].iodatum[ii].buf_meta)
+                nvme::dumpHandleInfo(EC, tests_g[devIdx].logfd, "meta buffer", tests_g[devIdx].iodatum[ii].buf_meta);
+            nvme::dumpTrace(EC, tests_g[devIdx].cntl.m_CntlHandle, tests_g[devIdx].logfd, 0);
+            mutex_unlock(tests_g[devIdx].mutex);
+
+            tests_g[devIdx].testStopFlag = 1;  // inform other tasks to stop
+            break;
+        }
+
+        if (++ii == nMaxOut)
+            ii = 0;
+    }
+}
+
+main()
+{
+    ...
+
+    for (devIdx = 0; devIdx <= DUTNum; ++devIdx)
+    {
+        ...
+
+        tests_g[devIdx].writeCount = 0;
+        tests_g[devIdx].writeCplCount = 0;
+        tests_g[devIdx].readCount = 0;
+        tests_g[devIdx].readCplCount = 0;
+        tests_g[devIdx].compCount = 0;
+        tests_g[devIdx].compCplCount = 0;
+
+        wtaskIds[devIdx] = task_create(task_write, devIdx);
+        rtaskIds[devIdx] = task_create(task_read, devIdx);
+        ctaskIds[devIdx] = task_create(task_compare, devIdx);
+    }
+
+    ...
+}
+
+      </code>
+    </pre>
+
+
+
+    <h4>Example 4: Monitor Performance and Temperature in the Background</h4>
+
+    <p>
+    This example illustrates how to get statistics values in the background.<br><br>
+
+    This example creates task_randomRead() task to launch random 4KB reads to the SSD.<br>
+    The main() task periodically polls the number of completion commands, gets SMART/Health
+    page of the controller, and prints the information.
+    </p>
+
+
+    <pre>
+      <code>
+#load <../pxm/pxm_clib.pxm>
+#load <../pxm/pxm_nvme.pxm>
+
+#include <../common_nvme/ndisk.pnt>
+
+
+task_randomRead(cntlHandle)
+{
+    var EC;
+    struct cntlInfo_t cntl;
+    struct namespace_t ns;
+    var nsHandle, sqHandle;
+    var LBADataSize, metadataSize , extLBADataSize;
+    var nRangeModule;
+    var buf_data, buf_meta;
+    var lba, len;
+    
+    cntl.Invalidate();
+    cntl.RetrieveInfo(0, cntlHandle);
+    cntl.CopyTheNthNamespace(0, ns);
+
+    LBADataSize = ns.GetLBADataSize_byte();
+    metadataSize = ns.GetMetadataSize_byte();
+    extLBADataSize = ns.GetExtLBADataSize_byte();
+
+    len = 4096 / LBADataSize;
+    buf_data = nvme::ddbAlloc(EC, cntlHandle, nvme::PRP, len * extLBADataSize); 
+    buf_meta = 0;
+    if (metadataSize > 0 && LBADataSize == extLBADataSize)
+        buf_meta = nvme::ddbAlloc(EC, cntlHandle, nvme::PRP, len * metadataSize); 
+
+    nsHandle = nvme::getNsHandle(EC, cntlHandle, ns.GetId());
+    sqHandle = nvme::getSQHandle(EC, cntlHandle, 1);
+    nvme::setSQAttr(EC, sqHandle, "DefaultNamespaceHandle", nsHandle);
+    nvme::setSQAttr(EC, sqHandle, "PollingMode", 0);
+
+    nRangeModule = ns.GetCapacity_lba() - len;
+    while (1)
+    {
+        lba = c::rand() % nRangeModule;
+        nvme::ioc::read(EC, sqHandle, buf_data, lba, len, buf_meta);
+    }
+}
+
+main()
+{
+    var EC;
+    var cntlHandle, nNsNum, nIOSQNum;
+    var sqHandle, cmdHandle;
+    var buf;
+    var nCmdCplNum0, nCmdCplNum1, nTemp;
+
+    if (!nvme::scan(EC)) {
+        c::printf("Error: fail to scan devices; error = %d\n", EC);
+        return;
+    }
+
+    if (nvme::getDevNum() <= 0) {
+        c::printf("Warning: no nvme device is detected!\n");
+        return (0);
+    }
+
+    cntlHandle = nvme::getCntlHandle(EC, 0, 0);
+    nvme::init(EC, cntlHandle);
+
+    nNsNum = nvme::getNsNum(EC, cntlHandle);
+    if (nNsNum <= 0) {
+        c::printf("Error: no namespace exists in device 0\n");
+        return;
+    }
+
+    nIOSQNum = nvme::getIOSQNum(EC, cntlHandle);
+    if (nIOSQNum <= 0)
+    {
+        c::printf("Error: invalid IO SQ number: %d\n", nIOSQNum);
+        return (0);
+    }
+
+    sqHandle = nvme::getSQHandle(EC, cntlHandle, 1);
+    task_create(task_randomRead, cntlHandle);
+    sleep(10);
+
+    buf = nvme::ddbAlloc(EC, cntlHandle, nvme::PRP, 512);
+
+    c::printf("%12s, %8s\n", "Temperature", "K-IOPS");
+    while (1)
+    {
+        nCmdCplNum0 = nvme::getCmdComplNum(EC, sqHandle);
+        sleep(1000);
+        nCmdCplNum1 = nvme::getCmdComplNum(EC, sqHandle);
+
+        cmdHandle = nvme::admc::getLogPage_SMART(EC, cntlHandle, buf, 0xFFFFFFFF);
+        while (nvme::pspp(cmdHandle) == 0)
+            ;
+        nTemp = nvme::ddbReadInt16(EC, buf, 1 /*offset*/, 1 /*little endian*/);
+        c::printf("%12d, %8.1f\n", nTemp, (nCmdCplNum1 - nCmdCplNum0) / 1000.0);
+    }
+}
+      </code>
+    </pre>
+
 
 
     <script>

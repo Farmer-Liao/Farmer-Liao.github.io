@@ -15,7 +15,7 @@
           <h2>Introduction</h2>
 
     <!--  <p align="right">Last updated: <span id="last-updated"></span></p>  -->
-          <p align="right">Last updated: 2023/11/19</p> 
+          <p align="right">Last updated: 2023/12/5</p> 
 
 
           <h3>Features</h3>
@@ -24,13 +24,13 @@ NVMe Scrutiny Tester (NUT) is a testing-purpose software package for tailoring t
           </p>
 
           <p>
-NUT is composed of several Peanut extension modules and scripts.
+NUT is composed of Peanut interpreter, Peanut extension modules, and scripts.
 The major extension module is pxm_nvme.pxm which is devised to access
 NVMe SSDs in user space based on PCIe/NVMe architecture.
           </p>
 
           <p>
-The pxm_nvme.pxm extension module provides functions to:
+The pxm_nvme.pxm extension module includes the following functions:
 <ul type="disc">
   <li> Retrieve device information; includes </li>
     <ul type="circle">
@@ -47,6 +47,7 @@ The pxm_nvme.pxm extension module provides functions to:
   <li> Allocate/free DMA data buffers </li>
   <li> Read/write DMA data buffers </li>
   <li> Dump DMA data buffers </li>
+  <li> Support PRP and SGL buffers </li>
   <li> Support multiple devices (controllers)</li>
   <li> Support submission queue accesses by multitasks</li>
   <li> Namespace with/without metadata </li>
@@ -79,24 +80,40 @@ The pxm_nvme.pxm extension module provides functions to:
     </ul>
 
   <li> Dump trace of the latest commands and events </li>
-  <li> Command number and excution time statistics </li>
+  <li> Statistics of issued commands per OP code basis </li>
+  <li> Statistics of completed commands per OP code basis </li>
+  <li> Command excution time records for QoS statistics per SQ basis </li>
 </ul>
-Based on the functionalities provided by the extension modules, programmers
-are able to costomize versatile tests on NVMe disks.
           </p>
-          <p> <br> </p>
+
+          <p>
+Besides, NUT provides TCG Opal/Pyrite test scripts. The TCG Opal/Pyrite test scripts are 
+developed based on the following spec.:
+<ul>
+    <li> TCG Storage Opal SSC: Test Cases Specification, Specification 2.01, Revision 2.18 </li>
+    <li> TCG Storage Opal Test Cases Specification, Version 1.00 FINAL, Revision 1.00 </li>
+</ul>
+
+          </p>
+
+<!--
+          <p>
+Based on the functionalities provided by the extension modules, programmers
+are able to costomize versatile tests on NVMe SSDs. <br>
+          </p>
+-->
 
 
           <h3>Outstanding Efficiency</h3>
           <p>
-The Peanut extension module pxm_nvme.pxm supports functions to issue commands to
+The Peanut extension module pxm_nvme.pxm supports functions to issue NVMe commands to
 the SSD in a high efficiency.
-In a random 4KB-read test, we see that a performance over 800K IOPS is achieved where
-the the script only invokes 1 IO Submission queue and limits the maxmum number of 
-commands issued as 16. <br> <br>
+In a random 4KB-read test, we see a 800+K-IOPS performance. In the test,
+the script only invokes 1 IO submission queue and limits the maxmum number of 
+commands issued as 16. All commands are issued one by one in the script level. <br> <br>
 
-Below figures show random 4KB-read performances in conditions with 
-setting the number of IO Submission queues and the maxmum number of issued commands
+Below figures show random 4KB-read performances in conditions configuring
+the number of IO submission queues and the maxmum number of issued commands
 in each queue. 
           </p>
 
@@ -122,10 +139,11 @@ in each queue.
           <p> <br> </p>
 
 
-          <h3>System Requirements</h3>
+          <h3>Reference System and System Requirement</h3>
 <ul type="disc">
+  <li> ASUS STRIX Z590-A WIFI GAMMING mother board </li>
   <li> Ubuntu 20.04 </li>
-  <li> 2MB-size huge pages</li>
+  <li> 2MB-size huge pages </li>
 </ul>
           <p> <br> </p>
 

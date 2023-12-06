@@ -14,17 +14,26 @@
 
     <h2>Scan and Initialize</h2>
 
-    <p align="right">Last updated: 2023/11/5</p> 
+    <p align="right">Last updated: 2023/12/5</p> 
 
     <h4>Interfaces</h4>
 
     <p>
-      Before issuing Admin/NVM commands to NVMe SSDs, the script shall scans and initializes NVMe SSDs.
-      A NVMe SSD is represented as a controller handle (which stands for an NVMe controller and the corresponding
-      PCI function) by the extension module. <br><br>
+      In the early-stage process, the script shall scan and initialize NVMe SSDs.<br><br>
+
       The NVMe extension module ("pxm_nvme.pxm") provides intuitive and easy-to-use interfaces
-      to scan NVMe SSDs and initialize them with little effort. Interfaces of the major functions
-      and structures for disk scan and initializations are listed as the following:
+      to scan and initialize NVMe SSDs with little effort. Functions to scan and
+      initialize are to detect devices, do queue creations, pair submission
+      queues with completion queues, and get identify-controller and identify-namespace
+      information.<br><br>
+
+      An NVMe SSD (device) is represented as a controller handle by the extension module.
+      In concept, the controller handle can represent a device, a controller, or a PCI
+      function. After calling to scan(), controller handles are created for detected
+      devices. The script then gets each controller handle and calls initialization function
+      with the controller handle and queue configuration parameters.<br><br>
+
+      APIs and structures related to the early-stage process are as the following.
     </p>
 
     <table border="1">
@@ -270,7 +279,9 @@
 
     <h4>Example 1</h4>
     <p>
-        
+       In this example, the script calls to init() function without parameters about
+       creations of queues. As a result, init() function applies default settings to
+       create queues or create queues according to the device's capabilities.
     </p>
 
     <pre>
@@ -284,18 +295,21 @@ main()
     var nDevs, n;
     var cntlHandle;
 
-    if (!nvme::scan(EC)) {
+    if (!nvme::scan(EC))
+    {
         c::printf("Error %d: fail to scan NVMe SSDs\n", EC);
         return;
     }
 
     nDevs = nvme::getDevNum();
-    if (nDevs &lt;= 0) {
+    if (nDevs &lt;= 0)
+    {
         c::printf("No NVMe SSD is detected.\n");
         return;
     }
 
-    for (n = 0; n &lt; nDevs; ++n) {
+    for (n = 0; n &lt; nDevs; ++n)
+    {
         cntlHandle = nvme::getCntlHandle(EC, n);
 
         nvme::init(EC, cntlHandle);
@@ -327,13 +341,15 @@ main()
     var cntlHandle;
     struct nvme::queueInitParams_t queueInitParams;
 
-    if (!nvme::scan(EC)) {
+    if (!nvme::scan(EC))
+    {
         c::printf("Error %d: fail to scan NVMe SSDs\n", EC);
         return;
     }
 
     nDevs = nvme::getDevNum();
-    if (nDevs &lt;= 0) {
+    if (nDevs &lt;= 0)
+    {
         c::printf("No NVMe SSD is detected.\n");
         return;
     }
@@ -346,7 +362,8 @@ main()
     queueInitParams.nIOSQNumPerIOCQ = 4;
     queueInitParams.nIOCQSize = 1024;
 
-    for (n = 0; n &lt; nDevs; ++n) {
+    for (n = 0; n &lt; nDevs; ++n)
+    {
         cntlHandle = nvme::getCntlHandle(EC, n);
 
         nvme::init(EC, cntlHandle, queueInitParams);
@@ -360,7 +377,7 @@ main()
 
     <h4>Example 3</h4>
     <p>
-        This example initialize the controller with Admin Submission queue and Admin Completion queue
+        This example initializes the controller with Admin Submission queue and Admin Completion queue
         creations. No IO Submission queue or IO Completion queue is created. After the initialization,
         the script wants to create IO queues itself.
     </p>
@@ -376,18 +393,21 @@ main()
     var nDevs, n;
     var cntlHandle;
 
-    if (!nvme::scan(EC)) {
+    if (!nvme::scan(EC))
+    {
         c::printf("Error %d: fail to scan NVMe SSDs\n", EC);
         return;
     }
 
     nDevs = nvme::getDevNum();
-    if (nDevs &lt;= 0) {
+    if (nDevs &lt;= 0)
+    {
         c::printf("No NVMe SSD is detected.\n");
         return;
     }
 
-    for (n = 0; n &lt; nDevs; ++n) {
+    for (n = 0; n &lt; nDevs; ++n)
+    {
         cntlHandle = nvme::getCntlHandle(EC, n);
 
         nvme::initA(EC, cntlHandle);
